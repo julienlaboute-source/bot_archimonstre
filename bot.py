@@ -117,8 +117,8 @@ async def deletearchi(ctx, *, nom_archi):
     else:
         await ctx.send(f"⚠️ Aucun timer trouvé pour **{nom_archi}**.")
 
-@bot.command()
-async def help(ctx):
+@bot.command(name="archihelp")
+async def archi_help(ctx):
     """Affiche la liste des commandes du bot archimonstre"""
     msg = (
         "📖 **Commandes du bot Archimonstre :**\n"
@@ -126,7 +126,7 @@ async def help(ctx):
         "• `!timer <nom>` : Vérifie le dernier kill et le prochain repop si connu.\n"
         "• `!repop` : Affiche tous les archimonstres actuellement en repop.\n"
         "• `!deletearchi <nom>` : Supprime un timer enregistré par erreur.\n"
-        "• `!help` : Affiche cette aide."
+        "• `!archihelp` : Affiche cette aide."
     )
     await ctx.send(msg)
 
