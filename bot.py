@@ -10,7 +10,7 @@ TOKEN = os.environ["DISCORD_TOKEN"]
 PREFIX = "!"
 TIMEZONE = pytz.timezone("Europe/Paris")
 
-DATA_FILE = "data.json"
+DATA_FILE = "/data/data.json"  # pointage vers volume persistant Railway
 MAITRE_ROLE_NAME = "Maître de la Ligue d’Otomai"
 
 RARES = {
@@ -68,7 +68,7 @@ def today_key():
 # ================== EVENTS ==================
 @bot.event
 async def on_ready():
-    print(f"Bot connecté : {bot.user}")
+    print(f"Bot connecté : {bot.user} – Version mise à jour")
     hourly_repop.start()
     weekly_ligue.start()
 
@@ -88,7 +88,7 @@ async def archi(ctx, nom: str):
     day = today_key()
 
     data["daily"].setdefault(day, {})
-    points = 5 if nom in RARES else 1  # <--- points légendaires = 5
+    points = 5 if nom in RARES else 1
     data["daily"][day][uid] = data["daily"][day].get(uid, 0) + points
     data["weekly"][uid] = data["weekly"].get(uid, 0) + points
 
@@ -103,7 +103,6 @@ async def archi(ctx, nom: str):
         f"🔁 Repop entre **{fmt(start)}** et **{fmt(end)}**"
     )
 
-    # Message dramatique uniquement pour les légendaires
     if legendary:
         msg = (
             f"🌟 **CAPTURE LÉGENDAIRE !** 🌟\n"
@@ -151,10 +150,27 @@ async def timer(ctx, nom: str):
 @bot.command()
 async def deletearchi(ctx, nom: str):
     nom = nom.lower()
+    uid = str(ctx.author.id)
+    day = today_key()
+    points = 5 if nom in RARES else 1
+
     if nom in data["archis"]:
         del data["archis"][nom]
+
+        # Retirer les points journaliers
+        if day in data["daily"] and uid in data["daily"][day]:
+            data["daily"][day][uid] -= points
+            if data["daily"][day][uid] <= 0:
+                del data["daily"][day][uid]
+
+        # Retirer les points hebdo
+        if uid in data["weekly"]:
+            data["weekly"][uid] -= points
+            if data["weekly"][uid] <= 0:
+                del data["weekly"][uid]
+
         save_data()
-        await ctx.send(f"🗑️ Timer de **{nom}** supprimé.")
+        await ctx.send(f"🗑️ Timer de **{nom}** supprimé, points retirés.")
     else:
         await ctx.send("❌ Aucun timer trouvé.")
 
@@ -194,7 +210,7 @@ async def archihelp(ctx):
         "`!archi <nom>` — Enregistrer une capture\n"
         "`!archipasmoi <nom>` — Transmettre un timer\n"
         "`!timer <nom>` — Voir un timer\n"
-        "`!deletearchi <nom>` — Supprimer un timer\n"
+        "`!deletearchi <nom>` — Supprimer un timer et retirer les points\n"
         "`!classement` — Classement hebdomadaire\n"
         "`!totalarchi` — Total du jour\n"
         "`!repop` — Archimonstres en repop"
