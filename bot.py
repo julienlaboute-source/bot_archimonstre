@@ -34,7 +34,7 @@ bot = commands.Bot(
     command_prefix=PREFIX,
     intents=intents,
     help_command=None,
-    activity=discord.Game(name="Pokédex – Ligue d’Otomai")
+    activity=discord.Game(name="Joue à Dofus Retro – Ligue d’Otomai")
 )
 
 # ================== DATA ==================
@@ -88,8 +88,9 @@ async def archi(ctx, nom: str):
     day = today_key()
 
     data["daily"].setdefault(day, {})
-    data["daily"][day][uid] = data["daily"][day].get(uid, 0) + 1
-    data["weekly"][uid] = data["weekly"].get(uid, 0) + 1
+    points = 5 if nom in RARES else 1  # <--- points légendaires = 5
+    data["daily"][day][uid] = data["daily"][day].get(uid, 0) + points
+    data["weekly"][uid] = data["weekly"].get(uid, 0) + points
 
     save_data()
     await ctx.message.delete()
@@ -102,11 +103,13 @@ async def archi(ctx, nom: str):
         f"🔁 Repop entre **{fmt(start)}** et **{fmt(end)}**"
     )
 
+    # Message dramatique uniquement pour les légendaires
     if legendary:
         msg = (
             f"🌟 **CAPTURE LÉGENDAIRE !** 🌟\n"
             f"{msg}\n\n"
-            "Félicitations dresseur, un monstre légendaire rejoint le Pokédex !"
+            "💎 Une énergie colossale se condense dans votre pierre d’âme… "
+            "Le Monde des Douze tremble à la puissance de votre capture ! 💎"
         )
 
     await ctx.send(msg)
