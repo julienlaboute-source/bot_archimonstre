@@ -74,10 +74,17 @@ async def on_ready():
 # ================== COMMANDS ==================
 @bot.command()
 async def archi(ctx, nom: str):
+    """
+    Enregistre une capture d'archimonstre.
+    - Points légendaires = 5
+    - Message dramatique pour les rares
+    - Debug intégré pour vérifier l'envoi
+    """
     nom = nom.lower()
     t = now()
     start, end = repop_window(t)
 
+    # Enregistrement de la capture
     data["archis"][nom] = {
         "capture": t.isoformat(),
         "by": ctx.guild.name
@@ -92,15 +99,14 @@ async def archi(ctx, nom: str):
 
     save_data()
 
-    legendary = nom in RARES
-
+    # Construction du message
     msg = (
         f"✅ **{nom}** enregistré\n"
         f"🕒 Capturé à {fmt(t)}\n"
         f"🔁 Repop entre **{fmt(start)}** et **{fmt(end)}**"
     )
 
-    if legendary:
+    if nom in RARES:
         msg = (
             f"🌟 **CAPTURE LÉGENDAIRE !** 🌟\n"
             f"{msg}\n\n"
@@ -108,12 +114,15 @@ async def archi(ctx, nom: str):
             "Le Monde des Douze tremble à la puissance de votre capture ! 💎"
         )
 
-    # DEBUG pour vérifier l'envoi du message
+    # Debug et envoi sûr
     try:
         await ctx.send(msg)
-        print(f"[DEBUG] Message envoyé pour {nom}")
+        print(f"[DEBUG] Message envoyé pour {nom} dans {ctx.channel.name}")
     except Exception as e:
         print(f"[ERROR] Impossible d'envoyer le message pour {nom} : {e}")
+
+    # Optionnel : supprimer le message utilisateur
+    # await ctx.message.delete()
 
 @bot.command()
 async def archipasmoi(ctx, nom: str):
