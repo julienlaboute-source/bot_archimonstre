@@ -10,7 +10,7 @@ TOKEN = os.environ["DISCORD_TOKEN"]
 PREFIX = "!"
 TIMEZONE = pytz.timezone("Europe/Paris")
 
-DATA_FILE = "/data/data.json"  # volume persistant Railway
+DATA_FILE = "data.json"
 MAITRE_ROLE_NAME = "Maître de la Ligue d’Otomai"
 
 RARES = {
