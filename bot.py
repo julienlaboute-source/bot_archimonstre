@@ -10,7 +10,7 @@ TOKEN = os.environ["DISCORD_TOKEN"]
 PREFIX = "!"
 TIMEZONE = pytz.timezone("Europe/Paris")
 
-DATA_FILE = "/data/data.json"  # pointage vers volume persistant Railway
+DATA_FILE = "/data/data.json"  # volume persistant Railway
 MAITRE_ROLE_NAME = "Maître de la Ligue d’Otomai"
 
 RARES = {
@@ -18,7 +18,6 @@ RARES = {
     "ouature", "citassate", "serpistol", "fanburn", "fansis",
     "bistou", "abrinos", "bandapar",
     "roy", "bistoulerieur", "bistoulequeteur",
-    # Nouveaux légendaires
     "arabord", "farlon", "kannibal", "léopolnor",
     "pandive", "pekeutar", "radoutable", "yokaikoral"
 }
@@ -86,14 +85,12 @@ async def archi(ctx, nom: str):
 
     uid = str(ctx.author.id)
     day = today_key()
-
     data["daily"].setdefault(day, {})
     points = 5 if nom in RARES else 1
     data["daily"][day][uid] = data["daily"][day].get(uid, 0) + points
     data["weekly"][uid] = data["weekly"].get(uid, 0) + points
 
     save_data()
-    await ctx.message.delete()
 
     legendary = nom in RARES
 
@@ -111,7 +108,12 @@ async def archi(ctx, nom: str):
             "Le Monde des Douze tremble à la puissance de votre capture ! 💎"
         )
 
-    await ctx.send(msg)
+    # DEBUG pour vérifier l'envoi du message
+    try:
+        await ctx.send(msg)
+        print(f"[DEBUG] Message envoyé pour {nom}")
+    except Exception as e:
+        print(f"[ERROR] Impossible d'envoyer le message pour {nom} : {e}")
 
 @bot.command()
 async def archipasmoi(ctx, nom: str):
@@ -157,13 +159,13 @@ async def deletearchi(ctx, nom: str):
     if nom in data["archis"]:
         del data["archis"][nom]
 
-        # Retirer les points journaliers
+        # Retirer points journaliers
         if day in data["daily"] and uid in data["daily"][day]:
             data["daily"][day][uid] -= points
             if data["daily"][day][uid] <= 0:
                 del data["daily"][day][uid]
 
-        # Retirer les points hebdo
+        # Retirer points hebdo
         if uid in data["weekly"]:
             data["weekly"][uid] -= points
             if data["weekly"][uid] <= 0:
