@@ -10,7 +10,7 @@ TOKEN = os.environ["DISCORD_TOKEN"]
 PREFIX = "!"
 TIMEZONE = pytz.timezone("Europe/Paris")
 
-DATA_FILE = "data.json"
+DATA_FILE = "data.json"  # fichier local pour test rapide
 MAITRE_ROLE_NAME = "Maître de la Ligue d’Otomai"
 
 RARES = {
@@ -39,7 +39,10 @@ bot = commands.Bot(
 # ================== DATA ==================
 def load_data():
     if not os.path.exists(DATA_FILE):
-        return {"archis": {}, "daily": {}, "weekly": {}}
+        print(f"[INFO] {DATA_FILE} introuvable, création d'un nouveau fichier.")
+        os.makedirs(os.path.dirname(DATA_FILE) or ".", exist_ok=True)
+        with open(DATA_FILE, "w", encoding="utf-8") as f:
+            json.dump({"archis": {}, "daily": {}, "weekly": {}}, f, indent=2, ensure_ascii=False)
     with open(DATA_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
 
@@ -75,16 +78,16 @@ async def on_message(message):
 # ================== EVENTS ==================
 @bot.event
 async def on_ready():
-    print(f"Bot connecté : {bot.user} – Version safe")
+    print(f"Bot connecté : {bot.user} – Version stable")
     hourly_repop.start()
     weekly_ligue.start()
 
 # ================== COMMANDS ==================
 @bot.command()
 async def archi(ctx, nom: str):
-    """Enregistre une capture d'archimonstre avec debug et message dramatique."""
+    """Enregistre une capture d'archimonstre avec message dramatique et points légendaires."""
     try:
-        nom = nom.lower()
+        nom = nom.lower().strip()
         t = now()
         start, end = repop_window(t)
 
@@ -97,10 +100,10 @@ async def archi(ctx, nom: str):
         data["daily"][day][uid] = data["daily"][day].get(uid, 0) + points
         data["weekly"][uid] = data["weekly"].get(uid, 0) + points
         save_data()
+        print(f"[DEBUG] Data sauvegardée pour {nom}")
 
         # Construction du message
         msg = f"✅ **{nom}** enregistré\n🕒 Capturé à {fmt(t)}\n🔁 Repop entre **{fmt(start)}** et **{fmt(end)}**"
-
         if nom in RARES:
             msg = (
                 f"🌟 **CAPTURE LÉGENDAIRE !** 🌟\n"
@@ -109,15 +112,18 @@ async def archi(ctx, nom: str):
                 "Le Monde des Douze tremble à la puissance de votre capture ! 💎"
             )
 
-        print(f"[DEBUG] Message construit pour {nom} : {msg}")
+        print(f"[DEBUG] Message construit : {msg}")
         await ctx.send(msg)
 
-        # Optionnel : suppression du message utilisateur
-        # await ctx.message.delete()
+        # Suppression du message utilisateur sécurisée
+        try:
+            await ctx.message.delete()
+        except:
+            pass
 
     except Exception as e:
         print(f"[ERROR] Erreur dans !archi : {e}")
-        await ctx.send(f"❌ Une erreur est survenue lors de l'enregistrement de **{nom}**.")
+        # Pas de message d’erreur envoyé pour éviter doublons
 
 @bot.command()
 async def archipasmoi(ctx, nom: str):
@@ -149,17 +155,14 @@ async def deletearchi(ctx, nom: str):
     points = 5 if nom in RARES else 1
     if nom in data["archis"]:
         del data["archis"][nom]
-
         if day in data["daily"] and uid in data["daily"][day]:
             data["daily"][day][uid] -= points
             if data["daily"][day][uid] <= 0:
                 del data["daily"][day][uid]
-
         if uid in data["weekly"]:
             data["weekly"][uid] -= points
             if data["weekly"][uid] <= 0:
                 del data["weekly"][uid]
-
         save_data()
         await ctx.send(f"🗑️ Timer de **{nom}** supprimé, points retirés.")
     else:
