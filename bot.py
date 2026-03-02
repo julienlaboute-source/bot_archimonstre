@@ -119,34 +119,65 @@ async def archipasmoi(ctx, *, nom):
     )
 
 # -----------------------
-# TIMER PROCHAIN REPOP
+# REPOP (archis en cours)
 # -----------------------
-@bot.command()
-async def timerprochain(ctx):
+@bot.command(name="repop")
+async def repop(ctx):
     now = datetime.now(TIMEZONE)
-    window_end = now + timedelta(hours=2)
-
-    data.setdefault("captures", [])
-
     messages = []
-
-    for capture in data["captures"]:
+    for capture in data.get("captures", []):
         capture_time = datetime.fromisoformat(capture["timestamp"])
         repop_start = capture_time + timedelta(hours=2)
-
-        if now <= repop_start <= window_end:
-            messages.append(
-                f"🌀 {capture['nom'].capitalize()} commencera sa phase de repop à {repop_start.strftime('%Hh%M')}."
-            )
+        repop_end = capture_time + timedelta(hours=6)
+        if repop_start <= now <= repop_end:
+            messages.append(f"🌀 {capture['nom'].capitalize()} est actuellement en repop (phase commencée à {repop_start.strftime('%Hh%M')})")
 
     if not messages:
-        await ctx.send("⏳ Aucun archimonstre n'entre en phase de repop dans les 2 prochaines heures.")
+        await ctx.send("⏳ Aucun archimonstre n'est actuellement en phase de repop.")
         return
 
-    await ctx.send(
-        "⏳ **Archimonstres entrant en phase de repop :**\n\n"
-        + "\n".join(messages)
-    )
+    await ctx.send("⏳ **Archimonstres en repop :**\n" + "\n".join(messages))
+
+# -----------------------
+# PROCHAIN REPOP (0-2h)
+# -----------------------
+@bot.command(name="prochainrepop")
+async def prochainrepop(ctx):
+    now = datetime.now(TIMEZONE)
+    window_end = now + timedelta(hours=2)
+    messages = []
+
+    for capture in data.get("captures", []):
+        capture_time = datetime.fromisoformat(capture["timestamp"])
+        repop_start = capture_time + timedelta(hours=2)
+        if now <= repop_start <= window_end:
+            messages.append(f"🌀 {capture['nom'].capitalize()} commencera sa phase de repop à {repop_start.strftime('%Hh%M')}")
+
+    if not messages:
+        await ctx.send("⏳ Aucun archimonstre n'entre en repop dans les 2 prochaines heures.")
+        return
+
+    await ctx.send("⏳ **Archimonstres entrant en repop :**\n" + "\n".join(messages))
+
+# -----------------------
+# TIMER <nom> (recherche spécifique)
+# -----------------------
+@bot.command()
+async def timer(ctx, *, nom):
+    now = datetime.now(TIMEZONE)
+    nom = nom.lower()
+    found = False
+    for capture in data.get("captures", []):
+        if capture["nom"] == nom:
+            capture_time = datetime.fromisoformat(capture["timestamp"])
+            repop_start = capture_time + timedelta(hours=2)
+            repop_end = capture_time + timedelta(hours=6)
+            status = "en repop" if repop_start <= now <= repop_end else "à venir"
+            await ctx.send(f"🌀 {nom.capitalize()} → Phase de repop {status}, commence à {repop_start.strftime('%Hh%M')}")
+            found = True
+            break
+    if not found:
+        await ctx.send(f"❌ Archimonstre `{nom}` non trouvé dans les captures.")
 
 # -----------------------
 # CLASSEMENT
@@ -170,11 +201,7 @@ async def classement(ctx):
         if member:
             total_archis = len(data["archis"].get(user_id, []))
             rares_count = len([a for a in data["archis"].get(user_id, []) if a in RARES])
-
-            message += (
-                f"{i}. {member.display_name} — {score} pts "
-                f"({total_archis} archis différents | {rares_count} rares)\n"
-            )
+            message += f"{i}. {member.display_name} — {score} pts ({total_archis} archis différents | {rares_count} rares)\n"
 
     await ctx.send(message)
 
@@ -185,21 +212,28 @@ async def classement(ctx):
 @commands.has_permissions(administrator=True)
 async def resetweekly(ctx):
     try:
-        if not data["weekly"]:
+        if not data.get("weekly"):
             await ctx.send("❌ Aucun point cette semaine.")
             return
 
         role = discord.utils.get(ctx.guild.roles, name=MAITRE_ROLE_NAME)
+        if not role:
+            await ctx.send(f"❌ Rôle `{MAITRE_ROLE_NAME}` introuvable. Vérifie le nom exact sur Discord.")
+            return
 
         winner_id = max(data["weekly"], key=data["weekly"].get)
         member = ctx.guild.get_member(int(winner_id))
+        if not member:
+            await ctx.send(f"❌ Membre gagnant non trouvé sur le serveur.")
+            return
 
-        if role and member:
-            for m in ctx.guild.members:
-                if role in m.roles:
-                    await m.remove_roles(role)
+        # Supprimer le rôle existant
+        for m in ctx.guild.members:
+            if role in m.roles:
+                await m.remove_roles(role)
 
-            await member.add_roles(role)
+        # Attribuer au gagnant
+        await member.add_roles(role)
 
         await ctx.send(
             f"⚡️ Le Monde des Douze tremble devant cet exploit !\n"
