@@ -19,7 +19,8 @@ RARES = {
     "bistou", "abrinos", "bandapar",
     "roy", "bistoulerieur", "bistoulequeteur",
     "arabord", "farlon", "kannibal", "léopolnor",
-    "pandive", "pekeutar", "radoutable", "yokaikoral", "boostif"
+    "pandive", "pekeutar", "radoutable", "yokaikoral",
+    "boostif"
 }
 
 # ============================================
@@ -75,53 +76,71 @@ async def on_message(message):
     print(f"[DEBUG] Message reçu : {message.content} de {message.author}")
     await bot.process_commands(message)
 
+# ================== EVENTS ==================
 @bot.event
 async def on_ready():
     print(f"Bot connecté : {bot.user} – Version stable")
     hourly_repop.start()
+    weekly_ligue.start()
 
-# ================== COMMANDES ==================
+# ================== COMMANDS ==================
 @bot.command()
 async def archi(ctx, nom: str):
-    nom = nom.lower().strip()
-    t = now()
-    start, end = repop_window(t)
+    """Enregistre une capture d'archimonstre avec message dramatique et points légendaires."""
+    try:
+        nom = nom.lower().strip()
+        t = now()
+        start, end = repop_window(t)
 
-    data["archis"][nom] = {"capture": t.isoformat(), "by": ctx.guild.name}
-    uid = str(ctx.author.id)
-    day = today_key()
-    data["daily"].setdefault(day, {})
-    points = 5 if nom in RARES else 1
-    data["daily"][day][uid] = data["daily"][day].get(uid, 0) + points
-    data["weekly"][uid] = data["weekly"].get(uid, 0) + points
-    save_data()
+        # Enregistrement
+        data["archis"][nom] = {"capture": t.isoformat(), "by": str(ctx.author)}
+        uid = str(ctx.author.id)
+        day = today_key()
+        data["daily"].setdefault(day, {})
+        points = 5 if nom in RARES else 1
+        data["daily"][day][uid] = data["daily"][day].get(uid, 0) + points
+        data["weekly"][uid] = data["weekly"].get(uid, 0) + points
+        save_data()
+        print(f"[DEBUG] Data sauvegardée pour {nom}")
 
-    msg = f"✅ **{nom}** enregistré par {ctx.author.display_name}\n🕒 Capturé à {fmt(t)}\n🔁 Repop entre **{fmt(start)}** et **{fmt(end)}**"
-    if nom in RARES:
-        msg = (
-            f"🌟 **CAPTURE LÉGENDAIRE !** 🌟\n"
-            f"{msg}\n\n"
-            "💎 Une énergie colossale se condense dans votre pierre d’âme… "
-            "Le Monde des Douze tremble à la puissance de votre capture ! 💎"
-        )
-    await ctx.send(msg)
-    try: await ctx.message.delete()
-    except: pass
+        # Message
+        msg = f"✅ **{nom}** enregistré\n🕒 Capturé à {fmt(t)}\n🔁 Repop entre **{fmt(start)}** et **{fmt(end)}**"
+        if nom in RARES:
+            msg = (
+                f"🌟 **CAPTURE LÉGENDAIRE !** 🌟\n"
+                f"{msg}\n\n"
+                "💎 Une énergie colossale se condense dans votre pierre d’âme… "
+                "Le Monde des Douze tremble à la puissance de votre capture ! 💎"
+            )
+        await ctx.send(msg)
+
+        try:
+            await ctx.message.delete()
+        except:
+            pass
+    except Exception as e:
+        print(f"[ERROR] Erreur dans !archi : {e}")
 
 @bot.command()
 async def archipasmoi(ctx, nom: str):
-    nom = nom.lower()
-    if nom not in data["archis"]:
-        # On ajoute le timer mais sans points
+    """Ajoute un timer pour un archimonstre déjà capturé, sans points, et affiche le repop."""
+    try:
+        nom = nom.lower().strip()
         t = now()
-        data["archis"][nom] = {"capture": t.isoformat(), "by": "autre"}
+        start, end = repop_window(t)
+
+        # Ajouter le timer mais pas de points
+        data["archis"][nom] = {"capture": t.isoformat(), "by": "Autre chasseur"}
         save_data()
-        await ctx.send(f"ℹ️ Timer de **{nom}** ajouté mais aucun point attribué.")
-        return
-    info = data["archis"][nom]
-    cap = datetime.fromisoformat(info["capture"]).astimezone(TIMEZONE)
-    start, end = repop_window(cap)
-    await ctx.send(f"ℹ️ **Timer de {nom} connu**\n🕒 Capturé à {fmt(cap)}\n🔁 Repop entre **{fmt(start)}** et **{fmt(end)}**")
+
+        msg = f"ℹ️ **Timer de {nom} ajouté**\n🕒 Capturé à {fmt(t)} par un autre chasseur\n🔁 Repop entre **{fmt(start)}** et **{fmt(end)}**"
+        await ctx.send(msg)
+        try:
+            await ctx.message.delete()
+        except:
+            pass
+    except Exception as e:
+        print(f"[ERROR] Erreur dans !archipasmoi : {e}")
 
 @bot.command()
 async def timer(ctx, nom: str):
@@ -182,15 +201,14 @@ async def archihelp(ctx):
     await ctx.send(
         "**📘 Commandes – Bot Archimonstre**\n"
         "`!archi <nom>` — Enregistrer une capture\n"
-        "`!archipasmoi <nom>` — Transmettre un timer sans point\n"
+        "`!archipasmoi <nom>` — Ajouter un timer sans points\n"
         "`!timer <nom>` — Voir un timer\n"
         "`!deletearchi <nom>` — Supprimer un timer et retirer les points\n"
         "`!classement` — Classement hebdomadaire\n"
         "`!totalarchi` — Total du jour\n"
         "`!repop` — Archimonstres en repop\n"
-        "`!prochainrepop` — Timer des prochains archis\n"
-        "`!resetweekly` — Annonce le vainqueur et reset les points\n"
-        "`!resettimer` — Reboot des timers (admins uniquement)"
+        "`!resetweekly` — Reset du classement et annonce du vainqueur\n"
+        "`!resettimer` — Reset de tous les timers"
     )
 
 @bot.command()
@@ -209,43 +227,38 @@ async def repop(ctx):
     await ctx.send(msg)
 
 @bot.command()
+@commands.has_permissions(administrator=True)
 async def resetweekly(ctx):
-    """Annonce le vainqueur et reset le classement hebdomadaire."""
+    """Annonce le vainqueur et reset les points hebdo."""
+    role = discord.utils.get(ctx.guild.roles, name=MAITRE_ROLE_NAME)
     if not data["weekly"]:
-        await ctx.send("⚠️ Aucun score enregistré cette semaine.")
+        await ctx.send("⚠️ Aucun point enregistré cette semaine.")
         return
-
     winner_id = max(data["weekly"], key=data["weekly"].get)
     member = ctx.guild.get_member(int(winner_id))
-    if not member:
-        await ctx.send("⚠️ Impossible de retrouver le membre gagnant.")
-        return
-
-    role = discord.utils.get(ctx.guild.roles, name=MAITRE_ROLE_NAME)
-    if role:
+    if member:
+        # Retirer le rôle à l'ancien
         for m in ctx.guild.members:
             if role in m.roles:
                 await m.remove_roles(role)
+        # Ajouter le rôle au vainqueur
         await member.add_roles(role)
-
-    await ctx.send(
-        f"🏆 **LIGUE D’OTOMAI** 🏆\n"
-        f"Le monde des Douze tremble devant l'exploit de **{member.display_name}** !\n\n"
-        "Concentration à toute épreuve, les dresseurs parcourent le Monde des Douze et font le plein de pierres d’âmes 🔥\n"
-        "Qui sera le prochain Maître de la Ligue ? La bataille continue…"
-    )
-
+        # Message épique
+        await ctx.send(
+            f"🏆 **LIGUE D’OTOMAI** 🏆\n"
+            f"{member.display_name} devient **Maître de la Ligue** !\n\n"
+            "Concentration à toute épreuve, les dresseurs parcourent le Monde des Douze à toute allure et font le plein de **pierres d’âmes** 🔥"
+        )
     data["weekly"] = {}
     save_data()
 
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def resettimer(ctx):
-    """Reboot de tous les timers des archimonstres."""
-    for nom in data["archis"]:
-        data["archis"][nom]["capture"] = now().isoformat()
+    """Reset de tous les timers"""
+    data["archis"] = {}
     save_data()
-    await ctx.send("🔁 Tous les timers des archimonstres ont été réinitialisés !")
+    await ctx.send("🗑️ Tous les timers ont été réinitialisés.")
 
 # ================== TASKS ==================
 @tasks.loop(minutes=60)
@@ -255,17 +268,47 @@ async def hourly_repop():
         cap = datetime.fromisoformat(info["capture"]).astimezone(TIMEZONE)
         start, end = repop_window(cap)
         if start <= t <= start + timedelta(minutes=1):
-            for guild in bot.guilds:
-                for channel in guild.text_channels:
-                    try:
-                        if nom in RARES:
-                            await channel.send(f"🚨 **MONSTRE LÉGENDAIRE EN APPROCHE !** 🚨\n**{nom}** arrive, préparez vos pierres d’âmes !")
-                        else:
-                            await channel.send(f"🔔 **{nom}** est en phase de repop !")
-                        break
-                    except: continue
+            await send_alert(nom)
         if t > end:
             del data["archis"][nom]
             save_data()
+
+async def send_alert(nom):
+    for guild in bot.guilds:
+        for channel in guild.text_channels:
+            try:
+                if nom in RARES:
+                    await channel.send(f"🚨 **MONSTRE LÉGENDAIRE EN APPROCHE !** 🚨\n**{nom}** arrive, préparez vos **pierres d’âmes** !")
+                else:
+                    await channel.send(f"🔔 **{nom}** est en phase de repop !")
+                return
+            except:
+                continue
+
+@tasks.loop(time=time(21, 0, tzinfo=TIMEZONE))
+async def weekly_ligue():
+    for guild in bot.guilds:
+        role = discord.utils.get(guild.roles, name=MAITRE_ROLE_NAME)
+        if not role or not data["weekly"]:
+            return
+        winner_id = max(data["weekly"], key=data["weekly"].get)
+        member = guild.get_member(int(winner_id))
+        if member:
+            for m in guild.members:
+                if role in m.roles:
+                    await m.remove_roles(role)
+            await member.add_roles(role)
+            for channel in guild.text_channels:
+                try:
+                    await channel.send(
+                        f"🏆 **LIGUE D’OTOMAI** 🏆\n"
+                        f"{member.display_name} devient **Maître de la Ligue** !\n\n"
+                        "Concentration à toute épreuve, les dresseurs parcourent le Monde des Douze à toute allure et font le plein de **pierres d’âmes** 🔥"
+                    )
+                    break
+                except:
+                    continue
+        data["weekly"] = {}
+        save_data()
 
 bot.run(TOKEN)
