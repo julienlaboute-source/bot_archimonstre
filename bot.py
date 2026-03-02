@@ -5,7 +5,7 @@ import pytz
 import json
 import os
 
-# ⚠️ Récupération du token depuis la variable d'environnement DISCORD_TOKEN
+# ⚠️ Token depuis variable d'environnement
 TOKEN = os.getenv("DISCORD_TOKEN")
 
 intents = discord.Intents.default()
@@ -18,6 +18,7 @@ TIMEZONE = pytz.timezone("Europe/Paris")
 MAITRE_ROLE_NAME = "Maître de la Ligue d'Otomaï"
 DATA_FILE = "data.json"
 
+# Liste complète des rares
 RARES = {
     "faufoll", "bulgig", "pioulette", "drakolage", "crognan",
     "ouature", "citassate", "serpistol", "fanburn", "fansis",
@@ -31,7 +32,6 @@ RARES = {
 # -----------------------
 # DATA
 # -----------------------
-
 def load_data():
     if not os.path.exists(DATA_FILE):
         return {
@@ -52,7 +52,6 @@ data = load_data()
 # -----------------------
 # READY
 # -----------------------
-
 @bot.event
 async def on_ready():
     print(f"Bot connecté : {bot.user}")
@@ -60,7 +59,6 @@ async def on_ready():
 # -----------------------
 # ARCHI
 # -----------------------
-
 @bot.command()
 async def archi(ctx, *, nom):
     try:
@@ -85,6 +83,10 @@ async def archi(ctx, *, nom):
             data["weekly"][user_id] += 1
             rare_bonus = "\n🌟 Archimonstre rare ! +1 point bonus"
 
+        # Fenêtre de repop entre 2h et 6h après capture
+        repop_min = now + timedelta(hours=2)
+        repop_max = now + timedelta(hours=6)
+
         data["captures"].append({
             "nom": nom,
             "timestamp": now.isoformat()
@@ -94,7 +96,8 @@ async def archi(ctx, *, nom):
 
         await ctx.send(
             f"✅ {nom} enregistré par {ctx.author.display_name}\n"
-            f"🕒 {now.strftime('%Hh%M')}"
+            f"🕒 Capturé à {now.strftime('%Hh%M')}\n"
+            f"🔁 Repop entre {repop_min.strftime('%Hh%M')} et {repop_max.strftime('%Hh%M')}"
             f"{rare_bonus}"
         )
 
@@ -105,7 +108,6 @@ async def archi(ctx, *, nom):
 # -----------------------
 # ARCHIPASMOI
 # -----------------------
-
 @bot.command()
 async def archipasmoi(ctx, *, nom):
     now = datetime.now(TIMEZONE)
@@ -118,7 +120,6 @@ async def archipasmoi(ctx, *, nom):
 # -----------------------
 # TIMER PROCHAIN REPOP
 # -----------------------
-
 @bot.command()
 async def timerprochain(ctx):
     now = datetime.now(TIMEZONE)
@@ -149,7 +150,6 @@ async def timerprochain(ctx):
 # -----------------------
 # CLASSEMENT
 # -----------------------
-
 @bot.command()
 async def classement(ctx):
     if not data["scores"]:
@@ -180,7 +180,6 @@ async def classement(ctx):
 # -----------------------
 # RESET WEEKLY (ADMIN ONLY)
 # -----------------------
-
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def resetweekly(ctx):
@@ -218,7 +217,6 @@ async def resetweekly(ctx):
 # -----------------------
 # RESET TIMER (ADMIN ONLY)
 # -----------------------
-
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def resettimer(ctx):
@@ -231,5 +229,4 @@ async def resettimer(ctx):
         await ctx.send("❌ Une erreur est survenue lors du reset des timers.")
 
 # -----------------------
-
 bot.run(TOKEN)
