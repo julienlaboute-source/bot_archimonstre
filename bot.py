@@ -5,7 +5,7 @@ import pytz
 import json
 import os
 
-# ⚠️ Token depuis variable d'environnement
+# ⚠ Token depuis variable d'environnement
 TOKEN = os.getenv("DISCORD_TOKEN")
 
 intents = discord.Intents.default()
@@ -84,9 +84,9 @@ async def archi(ctx, *, nom):
             data["weekly"][user_id] += 1
             rare_bonus = "\n🌟 Archimonstre rare ! +1 point bonus"
 
-        # Fenêtre de repop entre 2h et 6h après capture
-        repop_min = now + timedelta(hours=2)
-        repop_max = now + timedelta(hours=6)
+        # Fenêtre de repop 10h après capture → durée 4h
+        repop_min = now + timedelta(hours=10)
+        repop_max = now + timedelta(hours=14)
 
         data["captures"].append({
             "nom": nom,
@@ -127,8 +127,8 @@ async def repop(ctx):
     messages = []
     for capture in data.get("captures", []):
         capture_time = datetime.fromisoformat(capture["timestamp"])
-        repop_start = capture_time + timedelta(hours=2)
-        repop_end = capture_time + timedelta(hours=6)
+        repop_start = capture_time + timedelta(hours=10)
+        repop_end = capture_time + timedelta(hours=14)
         if repop_start <= now <= repop_end:
             messages.append(f"🌀 {capture['nom'].capitalize()} est actuellement en repop (phase commencée à {repop_start.strftime('%Hh%M')})")
 
@@ -149,7 +149,7 @@ async def prochainrepop(ctx):
 
     for capture in data.get("captures", []):
         capture_time = datetime.fromisoformat(capture["timestamp"])
-        repop_start = capture_time + timedelta(hours=2)
+        repop_start = capture_time + timedelta(hours=10)
         if now <= repop_start <= window_end:
             messages.append(f"🌀 {capture['nom'].capitalize()} commencera sa phase de repop à {repop_start.strftime('%Hh%M')}")
 
@@ -170,8 +170,8 @@ async def timer(ctx, *, nom):
     for capture in data.get("captures", []):
         if capture["nom"] == nom:
             capture_time = datetime.fromisoformat(capture["timestamp"])
-            repop_start = capture_time + timedelta(hours=2)
-            repop_end = capture_time + timedelta(hours=6)
+            repop_start = capture_time + timedelta(hours=10)
+            repop_end = capture_time + timedelta(hours=14)
             status = "en repop" if repop_start <= now <= repop_end else "à venir"
             await ctx.send(f"🌀 {nom.capitalize()} → Phase de repop {status}, commence à {repop_start.strftime('%Hh%M')}")
             found = True
