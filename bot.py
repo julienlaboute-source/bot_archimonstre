@@ -10,7 +10,7 @@ TOKEN = os.environ["DISCORD_TOKEN"]
 PREFIX = "!"
 TIMEZONE = pytz.timezone("Europe/Paris")
 
-DATA_FILE = "data.json"  # fichier local pour test rapide
+DATA_FILE = "data.json"
 MAITRE_ROLE_NAME = "Maître de la Ligue d’Otomai"
 
 RARES = {
@@ -67,7 +67,7 @@ def repop_window(capture_time):
 def today_key():
     return now().strftime("%Y-%m-%d")
 
-# ================== DEBUG MESSAGES ==================
+# ================== DEBUG ==================
 @bot.event
 async def on_message(message):
     if message.author.bot:
@@ -85,55 +85,49 @@ async def on_ready():
 # ================== COMMANDS ==================
 @bot.command()
 async def archi(ctx, nom: str):
-    """Enregistre une capture d'archimonstre avec message dramatique et points légendaires."""
-    try:
-        nom = nom.lower().strip()
-        t = now()
-        start, end = repop_window(t)
+    nom = nom.lower().strip()
+    t = now()
+    start, end = repop_window(t)
 
-        # Enregistrement
-        data["archis"][nom] = {"capture": t.isoformat(), "by": ctx.guild.name}
-        uid = str(ctx.author.id)
-        day = today_key()
-        data["daily"].setdefault(day, {})
-        points = 5 if nom in RARES else 1
-        data["daily"][day][uid] = data["daily"][day].get(uid, 0) + points
-        data["weekly"][uid] = data["weekly"].get(uid, 0) + points
-        save_data()
-        print(f"[DEBUG] Data sauvegardée pour {nom}")
+    data["archis"][nom] = {"capture": t.isoformat(), "by": ctx.guild.name}
+    uid = str(ctx.author.id)
+    day = today_key()
+    data["daily"].setdefault(day, {})
+    points = 5 if nom in RARES else 1
+    data["daily"][day][uid] = data["daily"][day].get(uid, 0) + points
+    data["weekly"][uid] = data["weekly"].get(uid, 0) + points
+    save_data()
 
-        # Construction du message
-        msg = f"✅ **{nom}** enregistré par {ctx.author.display_name}\n🕒 Capturé à {fmt(t)}\n🔁 Repop entre **{fmt(start)}** et **{fmt(end)}**"
-        if nom in RARES:
-            msg = (
-                f"🌟 **CAPTURE LÉGENDAIRE !** 🌟\n"
-                f"{msg}\n\n"
-                "💎 Une énergie colossale se condense dans votre pierre d’âme… "
-                "Le Monde des Douze tremble à la puissance de votre capture ! 💎"
-            )
-
-        print(f"[DEBUG] Message construit : {msg}")
-        await ctx.send(msg)
-
-        # Suppression du message utilisateur sécurisée
-        try:
-            await ctx.message.delete()
-        except:
-            pass
-
-    except Exception as e:
-        print(f"[ERROR] Erreur dans !archi : {e}")
+    msg = f"✅ **{nom}** enregistré par {ctx.author.display_name}\n🕒 Capturé à {fmt(t)}\n🔁 Repop entre **{fmt(start)}** et **{fmt(end)}**"
+    if nom in RARES:
+        msg = (
+            f"🌟 **CAPTURE LÉGENDAIRE !** 🌟\n"
+            f"{msg}\n\n"
+            "💎 Une énergie colossale se condense dans votre pierre d’âme… "
+            "Le Monde des Douze tremble à la puissance de votre capture ! 💎"
+        )
+    await ctx.send(msg)
+    try: await ctx.message.delete()
+    except: pass
 
 @bot.command()
 async def archipasmoi(ctx, nom: str):
-    nom = nom.lower()
+    """Ajoute un timer sans donner de points à l'utilisateur."""
+    nom = nom.lower().strip()
+    t = now()
+    start, end = repop_window(t)
+
     if nom not in data["archis"]:
-        await ctx.send(f"❌ Timer de **{nom}** inconnu.")
-        return
-    info = data["archis"][nom]
-    cap = datetime.fromisoformat(info["capture"]).astimezone(TIMEZONE)
-    start, end = repop_window(cap)
-    await ctx.send(f"ℹ️ **Timer de {nom} connu**\n🕒 Capturé à {fmt(cap)} par un autre chasseur\n🔁 Repop entre **{fmt(start)}** et **{fmt(end)}**")
+        data["archis"][nom] = {"capture": t.isoformat(), "by": ctx.guild.name}
+        save_data()
+        msg = f"ℹ️ **Timer pour {nom} ajouté** sans attribution de points.\n🕒 Capturé à {fmt(t)}\n🔁 Repop entre **{fmt(start)}** et **{fmt(end)}**"
+    else:
+        cap = datetime.fromisoformat(data["archis"][nom]["capture"]).astimezone(TIMEZONE)
+        start, end = repop_window(cap)
+        msg = f"ℹ️ **Timer de {nom} connu**\n🕒 Capturé à {fmt(cap)} par un autre chasseur\n🔁 Repop entre **{fmt(start)}** et **{fmt(end)}**"
+    await ctx.send(msg)
+    try: await ctx.message.delete()
+    except: pass
 
 @bot.command()
 async def timer(ctx, nom: str):
@@ -148,29 +142,25 @@ async def timer(ctx, nom: str):
 
 @bot.command()
 async def deletearchi(ctx, nom: str):
-    """Supprime un timer et retire les points correspondants."""
-    try:
-        nom = nom.lower()
-        uid = str(ctx.author.id)
-        day = today_key()
-        points = 5 if nom in RARES else 1
+    nom = nom.lower()
+    uid = str(ctx.author.id)
+    day = today_key()
+    points = 5 if nom in RARES else 1
 
-        if nom in data["archis"]:
-            del data["archis"][nom]
-            if day in data["daily"] and uid in data["daily"][day]:
-                data["daily"][day][uid] -= points
-                if data["daily"][day][uid] <= 0:
-                    del data["daily"][day][uid]
-            if uid in data["weekly"]:
-                data["weekly"][uid] -= points
-                if data["weekly"][uid] <= 0:
-                    del data["weekly"][uid]
-            save_data()
-            await ctx.send(f"🗑️ Timer de **{nom}** supprimé, points retirés.")
-        else:
-            await ctx.send(f"❌ Aucun timer trouvé pour **{nom}**.")
-    except Exception as e:
-        print(f"[ERROR] !deletearchi : {e}")
+    if nom in data["archis"]:
+        del data["archis"][nom]
+        if day in data["daily"] and uid in data["daily"][day]:
+            data["daily"][day][uid] -= points
+            if data["daily"][day][uid] <= 0:
+                del data["daily"][day][uid]
+        if uid in data["weekly"]:
+            data["weekly"][uid] -= points
+            if data["weekly"][uid] <= 0:
+                del data["weekly"][uid]
+        save_data()
+        await ctx.send(f"🗑️ Timer de **{nom}** supprimé, points retirés.")
+    else:
+        await ctx.send(f"❌ Aucun timer trouvé pour **{nom}**.")
 
 @bot.command()
 async def classement(ctx):
@@ -186,12 +176,9 @@ async def classement(ctx):
 async def totalarchi(ctx):
     day = today_key()
     total = sum(data["daily"].get(day, {}).values())
-    if total < 10:
-        txt = "La chasse est calme aujourd’hui…"
-    elif total < 30:
-        txt = "La chasse commence à s’accélérer !"
-    else:
-        txt = "🔥 La chasse est **INTENSE** !"
+    if total < 10: txt = "La chasse est calme aujourd’hui…"
+    elif total < 30: txt = "La chasse commence à s’accélérer !"
+    else: txt = "🔥 La chasse est **INTENSE** !"
     await ctx.send(f"📊 **Total du jour – Guilde {ctx.guild.name}**\n🔢 {total} archimonstres capturés\n\n{txt}")
 
 @bot.command()
@@ -199,7 +186,7 @@ async def archihelp(ctx):
     await ctx.send(
         "**📘 Commandes – Bot Archimonstre**\n"
         "`!archi <nom>` — Enregistrer une capture\n"
-        "`!archipasmoi <nom>` — Transmettre un timer\n"
+        "`!archipasmoi <nom>` — Ajouter un timer sans points\n"
         "`!timer <nom>` — Voir un timer\n"
         "`!deletearchi <nom>` — Supprimer un timer et retirer les points\n"
         "`!classement` — Classement hebdomadaire\n"
