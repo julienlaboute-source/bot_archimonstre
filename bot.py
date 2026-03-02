@@ -55,6 +55,7 @@ data = load_data()
 @bot.event
 async def on_ready():
     print(f"Bot connecté : {bot.user}")
+    await bot.change_presence(activity=discord.Game(name="Joue à Dofus Retro"))
 
 # -----------------------
 # ARCHI
