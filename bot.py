@@ -5,8 +5,8 @@ import pytz
 import json
 import os
 
-# ⚠️ TOKEN doit être défini en variable d'environnement
-TOKEN = os.getenv("TOKEN")
+# ⚠️ Récupération du token depuis la variable d'environnement DISCORD_TOKEN
+TOKEN = os.getenv("DISCORD_TOKEN")
 
 intents = discord.Intents.default()
 intents.message_content = True
