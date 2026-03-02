@@ -192,7 +192,9 @@ async def archihelp(ctx):
         "`!classement` — Classement hebdomadaire\n"
         "`!totalarchi` — Total du jour\n"
         "`!repop` — Archimonstres en repop\n"
-        "`!prochainrepop` — Archimonstres qui vont repop dans 2h"
+        "`!prochainrepop` — Archimonstres qui vont repop dans 2h\n"
+        "`!resetweekly` — Annonce le vainqueur de la ligue et reset les points\n"
+        "`!resettimer` — Réinitialise tous les timers (admin uniquement)"
     )
 
 @bot.command()
@@ -225,6 +227,39 @@ async def prochainrepop(ctx):
         msg += "Aucun archimonstre ne commencera sa phase de repop dans les 2 prochaines heures."
     await ctx.send(msg)
 
+# ================== ADMIN COMMANDS ==================
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def resetweekly(ctx):
+    """Annonce le vainqueur de la ligue et reset les points weekly"""
+    if not data["weekly"]:
+        await ctx.send("❌ Aucun score enregistré cette semaine.")
+        return
+    # Trouve le vainqueur
+    winner_id = max(data["weekly"], key=data["weekly"].get)
+    member = ctx.guild.get_member(int(winner_id))
+    role = discord.utils.get(ctx.guild.roles, name=MAITRE_ROLE_NAME)
+    if member and role:
+        for m in ctx.guild.members:
+            if role in m.roles:
+                await m.remove_roles(role)
+        await member.add_roles(role)
+        await ctx.send(
+            f"🏆 **LIGUE D’OTOMAI** 🏆\n"
+            f"{member.display_name} devient **Maître de la Ligue** !\n\n"
+            "Concentration à toute épreuve, les dresseurs parcourent le Monde des Douze à toute allure et font le plein de **pierres d’âmes** 🔥"
+        )
+    data["weekly"] = {}
+    save_data()
+
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def resettimer(ctx):
+    """Réinitialise tous les timers"""
+    data["archis"] = {}
+    save_data()
+    await ctx.send("✅ Tous les timers ont été réinitialisés.")
+
 # ================== TASKS ==================
 @tasks.loop(minutes=60)
 async def hourly_repop():
@@ -252,6 +287,7 @@ async def send_alert(nom):
 
 @tasks.loop(time=time(21, 0, tzinfo=TIMEZONE))
 async def weekly_ligue():
+    # Auto weekly reset si tu veux laisser aussi le timer auto
     for guild in bot.guilds:
         role = discord.utils.get(guild.roles, name=MAITRE_ROLE_NAME)
         if not role or not data["weekly"]:
