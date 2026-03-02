@@ -5,7 +5,7 @@ import pytz
 import json
 import os
 
-# ⚠ Token depuis variable d'environnement
+# Token depuis variable d'environnement
 TOKEN = os.getenv("DISCORD_TOKEN")
 
 intents = discord.Intents.default()
@@ -18,7 +18,6 @@ TIMEZONE = pytz.timezone("Europe/Paris")
 MAITRE_ROLE_NAME = "Maître de la Ligue d'Otomaï"
 DATA_FILE = "data.json"
 
-# Liste complète des rares
 RARES = {
     "faufoll", "bulgig", "pioulette", "drakolage", "crognan",
     "ouature", "citassate", "serpistol", "fanburn", "fansis",
@@ -34,12 +33,7 @@ RARES = {
 # -----------------------
 def load_data():
     if not os.path.exists(DATA_FILE):
-        return {
-            "scores": {},
-            "weekly": {},
-            "archis": {},
-            "captures": []
-        }
+        return {"scores": {}, "weekly": {}, "archis": {}, "captures": []}
     with open(DATA_FILE, "r") as f:
         return json.load(f)
 
@@ -78,13 +72,14 @@ async def archi(ctx, *, nom):
         data["scores"][user_id] += 1
         data["weekly"][user_id] += 1
 
-        rare_bonus = ""
+        # Message épique pour rare
+        rare_message = ""
         if nom in RARES:
             data["scores"][user_id] += 1
             data["weekly"][user_id] += 1
-            rare_bonus = "\n🌟 Archimonstre rare ! +1 point bonus"
+            rare_message = f"\n🌟 **Un frisson parcourt le Monde des Douze ! {nom.capitalize()} est un Archimonstre rare ! Les étoiles s’inclinent devant ton exploit !**"
 
-        # Fenêtre de repop 10h après capture → durée 4h
+        # Fenêtre repop 10h après capture, durée 4h
         repop_min = now + timedelta(hours=10)
         repop_max = now + timedelta(hours=14)
 
@@ -96,10 +91,10 @@ async def archi(ctx, *, nom):
         save_data()
 
         await ctx.send(
-            f"✅ {nom} enregistré par {ctx.author.display_name}\n"
-            f"🕒 Capturé à {now.strftime('%Hh%M')}\n"
-            f"🔁 Repop entre {repop_min.strftime('%Hh%M')} et {repop_max.strftime('%Hh%M')}"
-            f"{rare_bonus}"
+            f"✅ {nom} enregistré par {ctx.author.display_name}"
+            f"\n🕒 Capturé à {now.strftime('%Hh%M')}"
+            f"\n🔁 Repop entre {repop_min.strftime('%Hh%M')} et {repop_max.strftime('%Hh%M')}"
+            f"{rare_message}"
         )
 
     except Exception as e:
@@ -113,9 +108,9 @@ async def archi(ctx, *, nom):
 async def archipasmoi(ctx, *, nom):
     now = datetime.now(TIMEZONE)
     await ctx.send(
-        f"👀 {nom.lower()} signalé par {ctx.author.display_name}\n"
-        f"🕒 {now.strftime('%Hh%M')}\n"
-        f"⚠ Aucun point attribué."
+        f"👀 {nom.lower()} signalé par {ctx.author.display_name}"
+        f"\n🕒 {now.strftime('%Hh%M')}"
+        f"\n⚠ Aucun point attribué."
     )
 
 # -----------------------
@@ -160,7 +155,7 @@ async def prochainrepop(ctx):
     await ctx.send("⏳ **Archimonstres entrant en repop :**\n" + "\n".join(messages))
 
 # -----------------------
-# TIMER <nom> (recherche spécifique)
+# TIMER <nom>
 # -----------------------
 @bot.command()
 async def timer(ctx, *, nom):
@@ -206,7 +201,7 @@ async def classement(ctx):
     await ctx.send(message)
 
 # -----------------------
-# RESET WEEKLY (ADMIN ONLY)
+# RESET WEEKLY (ADMIN)
 # -----------------------
 @bot.command()
 @commands.has_permissions(administrator=True)
@@ -227,12 +222,10 @@ async def resetweekly(ctx):
             await ctx.send(f"❌ Membre gagnant non trouvé sur le serveur.")
             return
 
-        # Supprimer le rôle existant
         for m in ctx.guild.members:
             if role in m.roles:
                 await m.remove_roles(role)
 
-        # Attribuer au gagnant
         await member.add_roles(role)
 
         await ctx.send(
@@ -250,7 +243,7 @@ async def resetweekly(ctx):
         await ctx.send("❌ Une erreur est survenue.")
 
 # -----------------------
-# RESET TIMER (ADMIN ONLY)
+# RESET TIMER (ADMIN)
 # -----------------------
 @bot.command()
 @commands.has_permissions(administrator=True)
