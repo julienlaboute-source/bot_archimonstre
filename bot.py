@@ -11,7 +11,7 @@ PREFIX = "!"
 TIMEZONE = pytz.timezone("Europe/Paris")
 
 DATA_FILE = "data.json"
-MAITRE_ROLE_NAME = "Maître de la Ligue d’Otomaï"
+MAITRE_ROLE_NAME = "Maître de la Ligue d’Otomai"
 ALERT_CHANNEL_NAME = "🤖⏰pokedex⌚🧌"
 
 # ================== ARCHIS ==================
@@ -168,7 +168,7 @@ async def deletearchi(ctx, nom: str):
 @bot.command()
 async def classement(ctx):
     classement_sorted = sorted(data["weekly"].items(), key=lambda x: x[1], reverse=True)
-    msg = "🏆 **Classement – Ligue d’Otomaï**\n\n"
+    msg = "🏆 **Classement – Ligue d’Otomai**\n\n"
     for uid, points in classement_sorted:
         member = ctx.guild.get_member(int(uid))
         if not member:
@@ -204,25 +204,20 @@ async def archilist(ctx):
         return
 
     msg = "📜 **Liste des archimonstres actuellement enregistrés** 📜\n\n"
-
     for nom, info in data["archis"].items():
         cap = datetime.fromisoformat(info["capture"]).astimezone(TIMEZONE)
         start, end = repop_window(cap)
-
         nom_bold = f"**{nom}**"
-
         if nom in LEGENDAIRES:
             line = f"🌟💎 {nom_bold} 💎🌟 — capturé à {fmt(cap)} | repop entre {fmt(start)} et {fmt(end)}\n"
         elif nom in RARES:
             line = f"⭐ {nom_bold} ⭐ — capturé à {fmt(cap)} | repop entre {fmt(start)} et {fmt(end)}\n"
         else:
             line = f"🔹 {nom_bold} — capturé à {fmt(cap)} | repop entre {fmt(start)} et {fmt(end)}\n"
-
         msg += line
-
     await ctx.send(msg)
 
-# ================== REPOP COMMANDS ==================
+# ================== REPOP ==================
 @bot.command()
 async def repop(ctx):
     t = now()
@@ -279,7 +274,7 @@ async def resetweekly(ctx):
             for channel in guild.text_channels:
                 try:
                     await channel.send(
-                        f"🏆 **LIGUE D’OTOMAÏ** 🏆\n"
+                        f"🏆 **LIGUE D’OTOMAI** 🏆\n"
                         f"{member.display_name} devient **Maître de la Ligue** !\n\n"
                         "Concentration à toute épreuve, les dresseurs parcourent le Monde des Douze à toute allure "
                         "et font le plein de **pierres d’âmes** 🔥"
@@ -289,6 +284,25 @@ async def resetweekly(ctx):
                     continue
     data["weekly"] = {}
     save_data()
+
+# ================== HELP ==================
+@bot.command()
+async def archihelp(ctx):
+    await ctx.send(
+        "**📘 Commandes – Bot Archimonstre**\n"
+        "`!archi <nom>` — Enregistrer une capture d’archimonstre (points et message dramatique)\n"
+        "`!archipasmoi <nom>` — Ajouter un timer sans attribuer de points\n"
+        "`!timer <nom>` — Voir le timer d’un archimonstre\n"
+        "`!deletearchi <nom>` — Supprimer un timer et retirer les points correspondants\n"
+        "`!classement` — Afficher le classement hebdomadaire détaillé (points, archis différents, rares, légendaires)\n"
+        "`!totalarchi` — Afficher le total des archimonstres différents capturés aujourd’hui\n"
+        "`!archilist` — Liste complète des archimonstres enregistrés avec mise en évidence 💎/⭐\n"
+        "`!repop` — Archimonstres actuellement en phase de repop\n"
+        "`!prochainrepop` — Archimonstres qui repop dans les 2 prochaines heures\n"
+        "`!resettimer` — Réinitialiser tous les timers\n"
+        "`!resetweekly` — Réinitialiser la ligue hebdomadaire et attribuer le rôle Maître de la Ligue\n"
+        "`!archihelp` — Afficher ce guide directement dans Discord"
+    )
 
 # ================== TASKS ==================
 @tasks.loop(minutes=60)
