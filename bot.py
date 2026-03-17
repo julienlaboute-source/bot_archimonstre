@@ -31,6 +31,7 @@ RARES = {
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
+intents.guilds = True
 
 bot = commands.Bot(command_prefix=PREFIX,intents=intents,help_command=None)
 
@@ -119,6 +120,38 @@ async def archi(ctx,nom:str):
     await ctx.send(msg)
 
 @bot.command()
+async def archilist(ctx):
+
+    if not data["archis"]:
+        await ctx.send("❌ Aucun archimonstre enregistré.")
+        return
+
+    msg="📜 **Liste des archimonstres actuellement enregistrés** 📜\n\n"
+
+    for nom,info in data["archis"].items():
+
+        cap=datetime.fromisoformat(info["capture"]).astimezone(TIMEZONE)
+        start,end=repop_window(cap)
+
+        msg+=f"🔹 **{nom}** — capturé à {fmt(cap)} | repop entre {fmt(start)} et {fmt(end)}\n"
+
+    await ctx.send(msg)
+
+@bot.command()
+async def totalarchi(ctx):
+
+    total=len(data["archis"])
+
+    if total<10:
+        txt="La chasse est calme aujourd’hui…"
+    elif total<30:
+        txt="La chasse commence à s’accélérer !"
+    else:
+        txt="🔥 La chasse est **INTENSE** !"
+
+    await ctx.send(f"📊 **Total du jour – Guilde {ctx.guild.name}**\n🔢 {total} archimonstres différents capturés\n\n{txt}")
+
+@bot.command()
 async def classement(ctx):
 
     classement=sorted(data["weekly"].items(),key=lambda x:x[1],reverse=True)
@@ -144,40 +177,6 @@ async def classement(ctx):
                     leg+=1
 
         msg+=f"{member.display_name} - {points} points ({len(archis)} archis différents, {rares} rares, {leg} légendaires)\n"
-
-    await ctx.send(msg)
-
-@bot.command()
-async def totalarchi(ctx):
-
-    day=today_key()
-
-    total=len(data["archis"])
-
-    if total<10:
-        txt="La chasse est calme aujourd’hui…"
-    elif total<30:
-        txt="La chasse commence à s’accélérer !"
-    else:
-        txt="🔥 La chasse est **INTENSE** !"
-
-    await ctx.send(f"📊 **Total du jour – Guilde {ctx.guild.name}**\n🔢 {total} archimonstres différents capturés\n\n{txt}")
-
-@bot.command()
-async def archilist(ctx):
-
-    if not data["archis"]:
-        await ctx.send("Aucun archimonstre enregistré.")
-        return
-
-    msg="📚 **Archimonstres suivis**\n\n"
-
-    for nom,info in data["archis"].items():
-
-        cap=datetime.fromisoformat(info["capture"]).astimezone(TIMEZONE)
-        start,end=repop_window(cap)
-
-        msg+=f"{nom} — repop {fmt(start)} / {fmt(end)}\n"
 
     await ctx.send(msg)
 
