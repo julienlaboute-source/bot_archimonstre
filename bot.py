@@ -202,11 +202,22 @@ async def archilist(ctx):
     if not data["archis"]:
         await ctx.send("❌ Aucun archimonstre enregistré.")
         return
+
     msg = "📜 **Liste des archimonstres actuellement enregistrés** 📜\n\n"
+
     for nom, info in data["archis"].items():
         cap = datetime.fromisoformat(info["capture"]).astimezone(TIMEZONE)
         start, end = repop_window(cap)
-        msg += f"🔹 **{nom}** — capturé à {fmt(cap)} | repop entre {fmt(start)} et {fmt(end)}\n"
+
+        if nom in LEGENDAIRES:
+            line = f"🌟 **{nom.upper()}** 🌟 — capturé à {fmt(cap)} | repop entre {fmt(start)} et {fmt(end)}\n"
+        elif nom in RARES:
+            line = f"⭐ **{nom}** ⭐ — capturé à {fmt(cap)} | repop entre {fmt(start)} et {fmt(end)}\n"
+        else:
+            line = f"🔹 {nom} — capturé à {fmt(cap)} | repop entre {fmt(start)} et {fmt(end)}\n"
+
+        msg += line
+
     await ctx.send(msg)
 
 # ================== REPOP COMMANDS ==================
