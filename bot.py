@@ -102,7 +102,7 @@ async def archi(ctx, nom: str):
 
     if nom in LEGENDAIRES:
         msg = (
-            "🌟 **CAPTURE LÉGENDAIRE !** 🌟\n"
+            "🌟💎 **CAPTURE LÉGENDAIRE !** 💎🌟\n"
             f"{msg}\n\n"
             "💎 Une énergie colossale se condense dans votre pierre d’âme…\n"
             "⚡️ Le Monde des Douze tremble sous votre puissance !\n"
@@ -210,7 +210,7 @@ async def archilist(ctx):
         start, end = repop_window(cap)
 
         if nom in LEGENDAIRES:
-            line = f"🌟 **{nom.upper()}** 🌟 — capturé à {fmt(cap)} | repop entre {fmt(start)} et {fmt(end)}\n"
+            line = f"🌟💎 **{nom.upper()}** 💎🌟 — capturé à {fmt(cap)} | repop entre {fmt(start)} et {fmt(end)}\n"
         elif nom in RARES:
             line = f"⭐ **{nom}** ⭐ — capturé à {fmt(cap)} | repop entre {fmt(start)} et {fmt(end)}\n"
         else:
@@ -307,7 +307,7 @@ async def send_alert(nom):
         if not channel:
             return
         if nom in LEGENDAIRES:
-            await channel.send(f"🚨 **MONSTRE LÉGENDAIRE EN APPROCHE !** 🚨\n**{nom}** arrive !")
+            await channel.send(f"🌟💎 **MONSTRE LÉGENDAIRE EN APPROCHE !** 💎🌟\n**{nom}** arrive !")
         elif nom in RARES:
             await channel.send(f"⭐ **ARCHIMONSTRE RARE EN APPROCHE !** ⭐\n**{nom}** pourrait apparaître.")
         else:
