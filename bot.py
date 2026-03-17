@@ -209,12 +209,14 @@ async def archilist(ctx):
         cap = datetime.fromisoformat(info["capture"]).astimezone(TIMEZONE)
         start, end = repop_window(cap)
 
+        nom_bold = f"**{nom}**"
+
         if nom in LEGENDAIRES:
-            line = f"🌟💎 **{nom.upper()}** 💎🌟 — capturé à {fmt(cap)} | repop entre {fmt(start)} et {fmt(end)}\n"
+            line = f"🌟💎 {nom_bold} 💎🌟 — capturé à {fmt(cap)} | repop entre {fmt(start)} et {fmt(end)}\n"
         elif nom in RARES:
-            line = f"⭐ **{nom}** ⭐ — capturé à {fmt(cap)} | repop entre {fmt(start)} et {fmt(end)}\n"
+            line = f"⭐ {nom_bold} ⭐ — capturé à {fmt(cap)} | repop entre {fmt(start)} et {fmt(end)}\n"
         else:
-            line = f"🔹 {nom} — capturé à {fmt(cap)} | repop entre {fmt(start)} et {fmt(end)}\n"
+            line = f"🔹 {nom_bold} — capturé à {fmt(cap)} | repop entre {fmt(start)} et {fmt(end)}\n"
 
         msg += line
 
@@ -306,11 +308,12 @@ async def send_alert(nom):
         channel = discord.utils.get(guild.text_channels, name=ALERT_CHANNEL_NAME)
         if not channel:
             return
+        nom_bold = f"**{nom}**"
         if nom in LEGENDAIRES:
-            await channel.send(f"🌟💎 **MONSTRE LÉGENDAIRE EN APPROCHE !** 💎🌟\n**{nom}** arrive !")
+            await channel.send(f"🌟💎 MONSTRE LÉGENDAIRE EN APPROCHE ! 💎🌟\n{nom_bold} arrive !")
         elif nom in RARES:
-            await channel.send(f"⭐ **ARCHIMONSTRE RARE EN APPROCHE !** ⭐\n**{nom}** pourrait apparaître.")
+            await channel.send(f"⭐ ARCHIMONSTRE RARE EN APPROCHE ! ⭐\n{nom_bold} pourrait apparaître.")
         else:
-            await channel.send(f"🔔 **{nom}** est en phase de repop !")
+            await channel.send(f"🔔 {nom_bold} est en phase de repop !")
 
 bot.run(TOKEN)
