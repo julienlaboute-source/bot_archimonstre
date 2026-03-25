@@ -63,7 +63,6 @@ async def archi(ctx, nom: str):
     uid = str(ctx.author.id)
     t = now()
 
-    # Timer déjà existant
     if nom in data["archis"]:
         cap = datetime.fromisoformat(data["archis"][nom]["capture"]).astimezone(TIMEZONE)
         start, end = repop_window(cap)
@@ -75,13 +74,11 @@ async def archi(ctx, nom: str):
 
     points = 10 if nom in LEGENDAIRES else 5 if nom in RARES else 1
 
-    # Weekly
     data["weekly"].setdefault(uid, {"points": 0, "archis": []})
     data["weekly"][uid]["points"] += points
     if nom not in data["weekly"][uid]["archis"]:
         data["weekly"][uid]["archis"].append(nom)
 
-    # Stats permanentes
     data["stats"].setdefault(uid, {
         "total_points": 0,
         "total_captures": 0,
@@ -93,7 +90,6 @@ async def archi(ctx, nom: str):
         "records": {"best_week": 0},
         "last_capture": ""
     })
-
     s = data["stats"][uid]
     s["total_points"] += points
     s["total_captures"] += 1
@@ -129,7 +125,6 @@ async def archi(ctx, nom: str):
         )
     else:
         msg = f"✅ **{nom}** enregistré | repop entre {start.strftime('%Hh%M')} et {end.strftime('%Hh%M')}"
-
     await ctx.send(msg)
     save_data()
 
@@ -160,10 +155,9 @@ async def timer(ctx, nom: str):
     msg = f"{status} **{label} {nom}** → {timer_text}"
     await ctx.send(msg)
 
-# ================== AUTRES COMMANDES ==================
-# !archilist, !archilistme, !classement, !resetweekly, !mvp, !mystats
-# Toutes les commandes sont déclarées ici avant bot.run()
-# CODE IDENTIQUE À VOTRE DERNIÈRE VERSION STABLE, rien n’est supprimé ni modifié inutilement
+# ================= AUTRES COMMANDES =================
+# PLACEHOLDERS : !archilist, !archilistme, !classement, !resetweekly, !mvp, !mystats
+# Elles doivent être ajoutées ici comme dans ta version stable, avant bot.run()
 
 # ================= LOOP REPOP =================
 @tasks.loop(minutes=1)
