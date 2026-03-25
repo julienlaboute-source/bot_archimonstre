@@ -188,25 +188,37 @@ async def archipasmoi(ctx, nom: str):
     nom = nom.lower()
     t = now()
     
-    if nom not in data["archis"]:
-        await ctx.send(f"❌ **{nom}** n’a pas été capturé aujourd’hui.")
-        return
+    # Vérifier si l'archi existe déjà (pour le timer)
+    info = data["archis"].get(nom)
+    start, end = repop_window(t)
+    capture_time = t.strftime('%Hh%M')
     
-    info = data["archis"][nom]
-    start, end = repop_window(datetime.fromisoformat(info["capture"]).astimezone(TIMEZONE))
-    status = "🟢" if start <= t <= end else "⏳" if t < start else "🔴"
-    timer_text = f"{start.strftime('%Hh%M')} - {end.strftime('%Hh%M')}" if t <= end else "Expiré"
-    
-    capturist = bot.get_user(int(info["by"]))
-    capturist_name = capturist.display_name if capturist else "Inconnu"
-
     label = "💎" if nom in LEGENDAIRES else "⭐" if nom in RARES else ""
     
-    msg = (
-        f"{status} **{label} {nom}** → {timer_text}\n"
-        f"🧍 Capturé par : {capturist_name}\n"
-        f"⚠️ Aucun point ne sera attribué avec cette commande"
-    )
+    # Message stylé comme !archi, mais aucun point n'est attribué
+    if nom in LEGENDAIRES:
+        msg = (
+            f"🌟💎 CAPTURE LÉGENDAIRE ! 💎🌟\n"
+            f"✅ **{nom}** (timer affiché pour info)\n"
+            f"🕒 Capturé à {capture_time}\n"
+            f"🔁 Repop estimé entre {start.strftime('%Hh%M')} et {end.strftime('%Hh%M')}\n\n"
+            f"💎 Une énergie colossale se condense dans la pierre d’âme…\n"
+            f"⚡️ Le Monde des Douze tremble sous votre puissance !\n"
+            f"🔥 Les étoiles s’inclinent devant ce triomphe ! 💥\n"
+            f"⚠️ Aucun point ne sera attribué avec cette commande"
+        )
+    elif nom in RARES:
+        msg = (
+            f"⭐ ARCHIMONSTRE RARE CAPTURÉ ! ⭐\n"
+            f"✅ **{nom}** (timer affiché pour info)\n"
+            f"🕒 Capturé à {capture_time}\n"
+            f"🔁 Repop estimé entre {start.strftime('%Hh%M')} et {end.strftime('%Hh%M')}\n\n"
+            f"Une aura inhabituelle émane de cette créature…\n"
+            f"⚠️ Aucun point ne sera attribué avec cette commande"
+        )
+    else:
+        msg = f"✅ **{nom}** (timer affiché pour info) | Repop estimé {start.strftime('%Hh%M')} - {end.strftime('%Hh%M')}\n⚠️ Aucun point ne sera attribué"
+    
     await ctx.send(msg)
 # ================= CLASSEMENT =================
 @bot.command()
