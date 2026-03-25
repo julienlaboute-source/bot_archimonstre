@@ -108,8 +108,37 @@ async def archi(ctx, nom: str):
     if nom in LEGENDAIRES:
         s["legendaires"] += 1
 
+    # ================= MESSAGE STYLÉ =================
+    capture_time = t.strftime('%Hh%M')
+
+    if nom in LEGENDAIRES:
+        msg = (
+            f"🌟💎 **CAPTURE LÉGENDAIRE !** 💎🌟\n"
+            f"✅ **{nom}** enregistré par **{ctx.author.display_name}**\n"
+            f"🕒 Capturé à {capture_time}\n"
+            f"🔁 Repop entre {start.strftime('%Hh%M')} et {end.strftime('%Hh%M')}\n\n"
+            f"💎 Une énergie colossale se condense dans votre pierre d’âme…\n"
+            f"⚡️ Le Monde des Douze tremble sous votre puissance !\n"
+            f"🔥 Les étoiles elles-mêmes s’inclinent devant votre triomphe ! 💥"
+        )
+
+    elif nom in RARES:
+        msg = (
+            f"⭐ **ARCHIMONSTRE RARE CAPTURÉ !** ⭐\n"
+            f"✅ **{nom}** enregistré par **{ctx.author.display_name}**\n"
+            f"🕒 Capturé à {capture_time}\n"
+            f"🔁 Repop entre {start.strftime('%Hh%M')} et {end.strftime('%Hh%M')}\n\n"
+            f"Une aura inhabituelle émane de cette créature…\n"
+            f"Les chasseurs expérimentés savent que ces spécimens sont particulièrement recherchés."
+        )
+
+    else:
+        msg = (
+            f"✅ **{nom}** enregistré | repop entre {start.strftime('%Hh%M')} et {end.strftime('%Hh%M')}"
+        )
+
+    await ctx.send(msg)
     save_data()
-    await ctx.send(f"✅ **{nom}** → repop {start.strftime('%Hh%M')} - {end.strftime('%Hh%M')}")
 
 # ================= ARCHILIST =================
 @bot.command()
