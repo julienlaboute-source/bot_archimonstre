@@ -182,6 +182,38 @@ async def archilistme(ctx):
     for part in split_message(msg):
         await ctx.send(part)
 
+# ================= ARCHIPASMOI =================
+@bot.command()
+async def archipasmoi(ctx):
+    t = now()
+    uid = str(ctx.author.id)
+    msg = f"📜 **Archimonstres non capturés aujourd'hui, {ctx.author.display_name}** 📜\n\n"
+    
+    # Archis capturés aujourd'hui par le joueur
+    captured_today = {nom for nom, info in data["archis"].items()
+                      if info["by"] == uid and datetime.fromisoformat(info["capture"]).astimezone(TIMEZONE).date() == t.date()}
+    
+    # Tous archis connus
+    all_archis = LEGENDAIRES | RARES | set(data["archis"].keys())  # Tous nom connus
+    
+    missing_archis = sorted(all_archis - captured_today)
+    
+    if not missing_archis:
+        msg += "✅ Tu as capturé tous les archimonstres du jour !"
+    else:
+        for nom in missing_archis:
+            info = data["archis"].get(nom)
+            if info:
+                cap = datetime.fromisoformat(info["capture"]).astimezone(TIMEZONE)
+                start, end = repop_window(cap)
+                timer_text = f"{start.strftime('%Hh%M')} - {end.strftime('%Hh%M')}" if now() <= end else "Expiré"
+            else:
+                timer_text = "Non encore capturé"
+            label = "💎" if nom in LEGENDAIRES else "⭐" if nom in RARES else ""
+            msg += f"{label} {nom} → {timer_text}\n"
+    
+    for part in split_message(msg):
+        await ctx.send(part)
 # ================= CLASSEMENT =================
 @bot.command()
 async def classement(ctx):
