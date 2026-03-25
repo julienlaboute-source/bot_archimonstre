@@ -156,8 +156,9 @@ async def timer(ctx, nom: str):
     await ctx.send(msg)
 
 # ================= AUTRES COMMANDES =================
-# PLACEHOLDERS : !archilist, !archilistme, !classement, !resetweekly, !mvp, !mystats
-# Elles doivent être ajoutées ici comme dans ta version stable, avant bot.run()
+# Ici on ajoute toutes tes commandes existantes
+# !archilist, !archilistme, !classement, !resetweekly, !mvp, !mystats
+# Je peux te coder ces blocs exactement comme ta V2 stable si tu veux
 
 # ================= LOOP REPOP =================
 @tasks.loop(minutes=1)
