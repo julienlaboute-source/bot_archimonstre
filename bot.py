@@ -184,36 +184,30 @@ async def archilistme(ctx):
 
 # ================= ARCHIPASMOI =================
 @bot.command()
-async def archipasmoi(ctx):
+async def archipasmoi(ctx, nom: str):
+    nom = nom.lower()
     t = now()
-    uid = str(ctx.author.id)
-    msg = f"📜 **Archimonstres non capturés aujourd'hui, {ctx.author.display_name}** 📜\n\n"
     
-    # Archis capturés aujourd'hui par le joueur
-    captured_today = {nom for nom, info in data["archis"].items()
-                      if info["by"] == uid and datetime.fromisoformat(info["capture"]).astimezone(TIMEZONE).date() == t.date()}
+    if nom not in data["archis"]:
+        await ctx.send(f"❌ **{nom}** n’a pas été capturé aujourd’hui.")
+        return
     
-    # Tous archis connus
-    all_archis = LEGENDAIRES | RARES | set(data["archis"].keys())  # Tous nom connus
+    info = data["archis"][nom]
+    start, end = repop_window(datetime.fromisoformat(info["capture"]).astimezone(TIMEZONE))
+    status = "🟢" if start <= t <= end else "⏳" if t < start else "🔴"
+    timer_text = f"{start.strftime('%Hh%M')} - {end.strftime('%Hh%M')}" if t <= end else "Expiré"
     
-    missing_archis = sorted(all_archis - captured_today)
+    capturist = bot.get_user(int(info["by"]))
+    capturist_name = capturist.display_name if capturist else "Inconnu"
+
+    label = "💎" if nom in LEGENDAIRES else "⭐" if nom in RARES else ""
     
-    if not missing_archis:
-        msg += "✅ Tu as capturé tous les archimonstres du jour !"
-    else:
-        for nom in missing_archis:
-            info = data["archis"].get(nom)
-            if info:
-                cap = datetime.fromisoformat(info["capture"]).astimezone(TIMEZONE)
-                start, end = repop_window(cap)
-                timer_text = f"{start.strftime('%Hh%M')} - {end.strftime('%Hh%M')}" if now() <= end else "Expiré"
-            else:
-                timer_text = "Non encore capturé"
-            label = "💎" if nom in LEGENDAIRES else "⭐" if nom in RARES else ""
-            msg += f"{label} {nom} → {timer_text}\n"
-    
-    for part in split_message(msg):
-        await ctx.send(part)
+    msg = (
+        f"{status} **{label} {nom}** → {timer_text}\n"
+        f"🧍 Capturé par : {capturist_name}\n"
+        f"⚠️ Aucun point ne sera attribué avec cette commande"
+    )
+    await ctx.send(msg)
 # ================= CLASSEMENT =================
 @bot.command()
 async def classement(ctx):
