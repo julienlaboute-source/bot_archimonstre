@@ -102,7 +102,6 @@ async def archipasmoi(ctx, nom: str):
     t = now()
     start, end = repop_window(t)
     capture_time = t.strftime('%Hh%M')
-    label = "💎" if nom in LEGENDAIRES else "⭐" if nom in RARES else ""
     
     if nom in LEGENDAIRES:
         msg = (
@@ -178,7 +177,7 @@ async def archilistme(ctx):
     for m in msgs:
         await ctx.send(m)
 
-# ---- !timer ----
+# ---- !timer <nom> ----
 @bot.command()
 async def timer(ctx, nom: str):
     nom = nom.lower()
@@ -197,6 +196,53 @@ async def timer(ctx, nom: str):
         status = "🔴 Expiré"
     msg = f"{status} **{nom}**\n🕒 Capturé à {cap.strftime('%Hh%M')}\n🔁 Repop estimé entre {start.strftime('%Hh%M')} et {end.strftime('%Hh%M')}"
     await ctx.send(msg)
+
+# ---- !repop ----
+@bot.command()
+async def repop(ctx):
+    t = now()
+    msgs = []
+    temp_msg = ""
+    for nom, info in data["archis"].items():
+        cap = datetime.fromisoformat(info["capture"]).astimezone(TIMEZONE)
+        start, end = repop_window(cap)
+        if start <= t <= end:
+            line = f"{nom} → En repop ({start.strftime('%Hh%M')} - {end.strftime('%Hh%M')})\n"
+            if len(temp_msg) + len(line) > 1900:
+                msgs.append(temp_msg)
+                temp_msg = ""
+            temp_msg += line
+    if temp_msg:
+        msgs.append(temp_msg)
+    if not msgs:
+        await ctx.send("Aucun archimonstre n'est actuellement en repop.")
+        return
+    for m in msgs:
+        await ctx.send(m)
+
+# ---- !prochainrepop ----
+@bot.command()
+async def prochainrepop(ctx):
+    t = now()
+    deux_heures = t + timedelta(hours=2)
+    msgs = []
+    temp_msg = ""
+    for nom, info in data["archis"].items():
+        cap = datetime.fromisoformat(info["capture"]).astimezone(TIMEZONE)
+        start, end = repop_window(cap)
+        if t < start <= deux_heures:
+            line = f"{nom} → Prochain repop à {start.strftime('%Hh%M')} (jusqu'à {end.strftime('%Hh%M')})\n"
+            if len(temp_msg) + len(line) > 1900:
+                msgs.append(temp_msg)
+                temp_msg = ""
+            temp_msg += line
+    if temp_msg:
+        msgs.append(temp_msg)
+    if not msgs:
+        await ctx.send("Aucun archimonstre ne repop dans les 2 prochaines heures.")
+        return
+    for m in msgs:
+        await ctx.send(m)
 
 # ---- !classement ----
 @bot.command()
@@ -248,7 +294,7 @@ async def resetweekly(ctx):
 async def mvp(ctx, pseudo: str):
     await ctx.send(f"🏆 Champion d’Otomail : {pseudo} 🏆")
 
-# ---- !deletetimer (supprime timer + points) ----
+# ---- !deletetimer ----
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def deletetimer(ctx, nom: str):
@@ -270,7 +316,7 @@ async def deletetimer(ctx, nom: str):
     save_data()
     await ctx.send(f"🗑️ **{nom}** supprimé du suivi et {points} points retirés du joueur.")
 
-# ================= REPOP =================
+# ================= REPOP LOOP =================
 @tasks.loop(minutes=60)
 async def hourly_repop():
     t = now()
