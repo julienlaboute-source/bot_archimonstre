@@ -140,6 +140,34 @@ async def archi(ctx, nom: str):
     await ctx.send(msg)
     save_data()
 
+# ================= CLASSEMENT =================
+@bot.command()
+async def classement(ctx):
+    classement_sorted = sorted(
+        data["weekly"].items(),
+        key=lambda x: x[1]["points"],
+        reverse=True
+    )
+
+    if not classement_sorted:
+        await ctx.send("❌ Aucun classement cette semaine")
+        return
+
+    msg = "🏆 Classement Hebdomadaire 🏆\n\n"
+    for uid, info in classement_sorted:
+        member = ctx.guild.get_member(int(uid))
+        if not member:
+            continue
+
+        archis = set(info["archis"])
+        rares = sum(1 for a in archis if a in RARES)
+        leg = sum(1 for a in archis if a in LEGENDAIRES)
+
+        msg += f"{member.display_name} - {info['points']} points ({len(archis)} archis différents, {rares} rares, {leg} légendaires)\n"
+
+    for part in split_message(msg):
+        await ctx.send(part)
+
 # ================= ARCHILIST =================
 @bot.command()
 async def archilist(ctx):
