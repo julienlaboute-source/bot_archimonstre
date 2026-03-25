@@ -155,10 +155,86 @@ async def timer(ctx, nom: str):
     msg = f"{status} **{label} {nom}** → {timer_text}"
     await ctx.send(msg)
 
-# ================= AUTRES COMMANDES =================
-# Ici on ajoute toutes tes commandes existantes
-# !archilist, !archilistme, !classement, !resetweekly, !mvp, !mystats
-# Je peux te coder ces blocs exactement comme ta V2 stable si tu veux
+# ================= ARCHILIST =================
+@bot.command()
+async def archilist(ctx):
+    t = now()
+    msg = "📜 **Liste des archimonstres du jour** 📜\n\n"
+    day_archis = [(nom, info) for nom, info in data["archis"].items() if datetime.fromisoformat(info["capture"]).astimezone(TIMEZONE).date() == t.date()]
+    for nom, info in sorted(day_archis, key=lambda x: datetime.fromisoformat(x[1]["capture"])):
+        start, end = repop_window(datetime.fromisoformat(info["capture"]).astimezone(TIMEZONE))
+        status = "🔴" if t > end else "🟢"
+        msg += f"{status} {nom} → {start.strftime('%Hh%M')} - {end.strftime('%Hh%M')}\n"
+    for part in split_message(msg):
+        await ctx.send(part)
+
+# ================= ARCHILISTME =================
+@bot.command()
+async def archilistme(ctx):
+    t = now()
+    uid = str(ctx.author.id)
+    msg = f"📜 **Tes archimonstres du jour, {ctx.author.display_name}** 📜\n\n"
+    day_archis = [(nom, info) for nom, info in data["archis"].items() if info["by"] == uid and datetime.fromisoformat(info["capture"]).astimezone(TIMEZONE).date() == t.date()]
+    for nom, info in sorted(day_archis, key=lambda x: datetime.fromisoformat(x[1]["capture"])):
+        start, end = repop_window(datetime.fromisoformat(info["capture"]).astimezone(TIMEZONE))
+        status = "🔴" if t > end else "🟢"
+        msg += f"{status} {nom} → {start.strftime('%Hh%M')} - {end.strftime('%Hh%M')}\n"
+    for part in split_message(msg):
+        await ctx.send(part)
+
+# ================= CLASSEMENT =================
+@bot.command()
+async def classement(ctx):
+    classement_sorted = sorted(
+        data["weekly"].items(),
+        key=lambda x: x[1]["points"],
+        reverse=True
+    )
+    msg = "🏆 **Classement hebdomadaire** 🏆\n\n"
+    for uid, info in classement_sorted:
+        member = ctx.guild.get_member(int(uid))
+        if not member:
+            continue
+        archis = set(info["archis"])
+        rares = sum(1 for a in archis if a in RARES)
+        leg = sum(1 for a in archis if a in LEGENDAIRES)
+        msg += f"{member.display_name} - {info['points']} points ({len(archis)} archis, {rares} rares, {leg} légendaires)\n"
+    await ctx.send(msg)
+
+# ================= RESETWEEKLY =================
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def resetweekly(ctx):
+    data["weekly"] = {}
+    for uid in data["stats"]:
+        data["stats"][uid]["weekly_points"] = 0
+    save_data()
+    await ctx.send("♻️ Classement hebdomadaire réinitialisé !")
+
+# ================= MVP =================
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def mvp(ctx, pseudo: str):
+    await ctx.send(f"🏅 **Champion d’Otomail : {pseudo} !** 🏅")
+
+# ================= MYSTATS =================
+@bot.command()
+async def mystats(ctx):
+    uid = str(ctx.author.id)
+    s = data["stats"].get(uid)
+    if not s:
+        await ctx.send("❌ Aucune stat disponible.")
+        return
+    msg = (
+        f"📊 **Tes stats, {ctx.author.display_name}** 📊\n"
+        f"Points totaux : {s['total_points']}\n"
+        f"Archis uniques : {len(s['archis_uniques'])}\n"
+        f"Légendaires : {s['legendaires']}, Rares : {s['rares']}\n"
+        f"Captures totales : {s['total_captures']}\n"
+        f"Points cette semaine : {s['weekly_points']}\n"
+        f"Points aujourd'hui : {s['daily_points']}"
+    )
+    await ctx.send(msg)
 
 # ================= LOOP REPOP =================
 @tasks.loop(minutes=1)
