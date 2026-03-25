@@ -271,6 +271,36 @@ async def resetweekly(ctx):
     save_data()
     await ctx.send("♻️ Reset weekly et archis OK")
 
+# ================= TIMER =================
+@bot.command(name="timer")
+async def timer(ctx):
+    t = now()
+    today_start = t.replace(hour=0, minute=0, second=0, microsecond=0)
+    archis = []
+    for nom, info in data["archis"].items():
+        cap = datetime.fromisoformat(info["capture"]).astimezone(TIMEZONE)
+        if cap >= today_start:
+            start, end = repop_window(cap)
+            archis.append((nom, start, end))
+    if not archis:
+        await ctx.send("❌ Aucun archi enregistré aujourd’hui")
+        return
+    archis.sort(key=lambda x: x[1])
+    msg = "⏰ Timers des archis aujourd'hui :\n\n"
+    for nom, start, end in archis:
+        if start <= t <= end:
+            status = "🟢"
+            timer_text = f"{start.strftime('%Hh%M')} - {end.strftime('%Hh%M')}"
+        elif t < start:
+            status = "⏳"
+            timer_text = f"{start.strftime('%Hh%M')} - {end.strftime('%Hh%M')}"
+        else:
+            status = "🔴"
+            timer_text = "Expiré"
+        msg += f"{status} **{nom}** → {timer_text}\n"
+    for part in split_message(msg):
+        await ctx.send(part)
+
 # ================= LOOP =================
 @tasks.loop(minutes=1)
 async def repop_loop():
