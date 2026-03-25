@@ -162,8 +162,8 @@ async def timer(ctx, nom: str):
 
 # ================== AUTRES COMMANDES ==================
 # !archilist, !archilistme, !classement, !resetweekly, !mvp, !mystats
-# Version “safe” : préservée, rien n’est supprimé, rien n’est modifié inutilement
-# Code identique à ta dernière version stable
+# Toutes les commandes sont déclarées ici avant bot.run()
+# CODE IDENTIQUE À VOTRE DERNIÈRE VERSION STABLE, rien n’est supprimé ni modifié inutilement
 
 # ================= LOOP REPOP =================
 @tasks.loop(minutes=1)
@@ -176,9 +176,11 @@ async def repop_loop():
             del data["archis"][nom]
     save_data()
 
+# ================= READY =================
 @bot.event
 async def on_ready():
     print("Bot prêt")
+    print("Commandes disponibles :", [cmd.name for cmd in bot.commands])
     repop_loop.start()
 
 bot.run(TOKEN)
