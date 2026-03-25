@@ -8,6 +8,7 @@ import json
 TOKEN = os.environ["DISCORD_TOKEN"]
 PREFIX = "!"
 TIMEZONE = pytz.timezone("Europe/Paris")
+
 DATA_FILE = "data.json"
 ALERT_CHANNEL_NAME = "🤖⏰pokedex⌚🧌"
 
@@ -26,10 +27,10 @@ RARES = {
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix=PREFIX, intents=intents, help_command=None)
 
-# ================= DATA =================
+# ================== DATA ==================
 def load_data():
     if not os.path.exists(DATA_FILE):
-        return {"archis": {}, "weekly": {}, "stats": {}}
+        return {"archis": {}, "daily": {}, "weekly": {}}
     with open(DATA_FILE, "r") as f:
         return json.load(f)
 
@@ -45,69 +46,35 @@ def now():
 def repop_window(t):
     return t + timedelta(hours=10), t + timedelta(hours=14)
 
-def split_message(msg, limit=2000):
-    parts = []
-    while len(msg) > limit:
-        split_index = msg.rfind("\n", 0, limit)
-        if split_index == -1:
-            split_index = limit
-        parts.append(msg[:split_index])
-        msg = msg[split_index:]
-    parts.append(msg)
-    return parts
-
-# ================= ARCHI =================
+# ================== COMMANDES ==================
+# ---- !archi ----
 @bot.command()
 async def archi(ctx, nom: str):
     nom = nom.lower()
-    uid = str(ctx.author.id)
     t = now()
-
-    if nom in data["archis"]:
-        cap = datetime.fromisoformat(data["archis"][nom]["capture"]).astimezone(TIMEZONE)
-        start, end = repop_window(cap)
-        await ctx.send(f"⚠️ **{nom}** déjà capturé → {start.strftime('%Hh%M')} - {end.strftime('%Hh%M')}")
-        return
-
     start, end = repop_window(t)
+    uid = str(ctx.author.id)
+
     data["archis"][nom] = {"capture": t.isoformat(), "by": uid}
 
-    points = 10 if nom in LEGENDAIRES else 5 if nom in RARES else 1
+    points = 1
+    if nom in RARES:
+        points = 5
+    if nom in LEGENDAIRES:
+        points = 10
 
     data["weekly"].setdefault(uid, {"points": 0, "archis": []})
     data["weekly"][uid]["points"] += points
     if nom not in data["weekly"][uid]["archis"]:
         data["weekly"][uid]["archis"].append(nom)
 
-    data["stats"].setdefault(uid, {
-        "total_points": 0,
-        "total_captures": 0,
-        "archis_uniques": [],
-        "rares": 0,
-        "legendaires": 0,
-        "weekly_points": 0,
-        "daily_points": 0,
-        "records": {"best_week": 0},
-        "last_capture": ""
-    })
-    s = data["stats"][uid]
-    s["total_points"] += points
-    s["total_captures"] += 1
-    s["weekly_points"] += points
-    s["daily_points"] += points
-    s["last_capture"] = t.isoformat()
-    if nom not in s["archis_uniques"]:
-        s["archis_uniques"].append(nom)
-    if nom in RARES:
-        s["rares"] += 1
-    if nom in LEGENDAIRES:
-        s["legendaires"] += 1
+    save_data()
 
     capture_time = t.strftime('%Hh%M')
     if nom in LEGENDAIRES:
         msg = (
-            f"🌟💎 **CAPTURE LÉGENDAIRE !** 💎🌟\n"
-            f"✅ **{nom}** enregistré par **{ctx.author.display_name}**\n"
+            f"🌟💎 CAPTURE LÉGENDAIRE ! 💎🌟\n"
+            f"✅ **{nom}** enregistré par {ctx.author.display_name}\n"
             f"🕒 Capturé à {capture_time}\n"
             f"🔁 Repop entre {start.strftime('%Hh%M')} et {end.strftime('%Hh%M')}\n\n"
             f"💎 Une énergie colossale se condense dans votre pierre d’âme…\n"
@@ -116,86 +83,27 @@ async def archi(ctx, nom: str):
         )
     elif nom in RARES:
         msg = (
-            f"⭐ **ARCHIMONSTRE RARE CAPTURÉ !** ⭐\n"
-            f"✅ **{nom}** enregistré par **{ctx.author.display_name}**\n"
+            f"⭐ ARCHIMONSTRE RARE CAPTURÉ ! ⭐\n"
+            f"✅ **{nom}** enregistré par {ctx.author.display_name}\n"
             f"🕒 Capturé à {capture_time}\n"
             f"🔁 Repop entre {start.strftime('%Hh%M')} et {end.strftime('%Hh%M')}\n\n"
             f"Une aura inhabituelle émane de cette créature…\n"
             f"Les chasseurs expérimentés savent que ces spécimens sont particulièrement recherchés."
         )
     else:
-        msg = f"✅ **{nom}** enregistré | repop entre {start.strftime('%Hh%M')} et {end.strftime('%Hh%M')}"
-    await ctx.send(msg)
-    save_data()
-
-# ================= TIMER INDIVIDUEL =================
-@bot.command()
-async def timer(ctx, nom: str):
-    nom = nom.lower()
-    t = now()
-    if nom not in data["archis"]:
-        await ctx.send(f"❌ Aucun timer trouvé pour **{nom}**")
-        return
-
-    info = data["archis"][nom]
-    cap = datetime.fromisoformat(info["capture"]).astimezone(TIMEZONE)
-    start, end = repop_window(cap)
-
-    label = "💎" if nom in LEGENDAIRES else "⭐" if nom in RARES else ""
-    if start <= t <= end:
-        status = "🟢"
-        timer_text = f"{start.strftime('%Hh%M')} - {end.strftime('%Hh%M')}"
-    elif t < start:
-        status = "⏳"
-        timer_text = f"{start.strftime('%Hh%M')} - {end.strftime('%Hh%M')}"
-    else:
-        status = "🔴"
-        timer_text = "Expiré"
-
-    msg = f"{status} **{label} {nom}** → {timer_text}"
+        msg = f"✅ **{nom}** enregistré par {ctx.author.display_name} | Repop {start.strftime('%Hh%M')} - {end.strftime('%Hh%M')}"
+    
     await ctx.send(msg)
 
-# ================= ARCHILIST =================
-@bot.command()
-async def archilist(ctx):
-    t = now()
-    msg = "📜 **Liste des archimonstres du jour** 📜\n\n"
-    day_archis = [(nom, info) for nom, info in data["archis"].items() if datetime.fromisoformat(info["capture"]).astimezone(TIMEZONE).date() == t.date()]
-    for nom, info in sorted(day_archis, key=lambda x: datetime.fromisoformat(x[1]["capture"])):
-        start, end = repop_window(datetime.fromisoformat(info["capture"]).astimezone(TIMEZONE))
-        status = "🔴" if t > end else "🟢"
-        msg += f"{status} {nom} → {start.strftime('%Hh%M')} - {end.strftime('%Hh%M')}\n"
-    for part in split_message(msg):
-        await ctx.send(part)
-
-# ================= ARCHILISTME =================
-@bot.command()
-async def archilistme(ctx):
-    t = now()
-    uid = str(ctx.author.id)
-    msg = f"📜 **Tes archimonstres du jour, {ctx.author.display_name}** 📜\n\n"
-    day_archis = [(nom, info) for nom, info in data["archis"].items() if info["by"] == uid and datetime.fromisoformat(info["capture"]).astimezone(TIMEZONE).date() == t.date()]
-    for nom, info in sorted(day_archis, key=lambda x: datetime.fromisoformat(x[1]["capture"])):
-        start, end = repop_window(datetime.fromisoformat(info["capture"]).astimezone(TIMEZONE))
-        status = "🔴" if t > end else "🟢"
-        msg += f"{status} {nom} → {start.strftime('%Hh%M')} - {end.strftime('%Hh%M')}\n"
-    for part in split_message(msg):
-        await ctx.send(part)
-
-# ================= ARCHIPASMOI =================
+# ---- !archipasmoi ----
 @bot.command()
 async def archipasmoi(ctx, nom: str):
     nom = nom.lower()
     t = now()
-    
-    # Vérifier si l'archi existe déjà (pour le timer)
-    info = data["archis"].get(nom)
     start, end = repop_window(t)
     capture_time = t.strftime('%Hh%M')
-    
     label = "💎" if nom in LEGENDAIRES else "⭐" if nom in RARES else ""
     
-    # Message stylé comme !archi, mais aucun point n'est attribué
     if nom in LEGENDAIRES:
         msg = (
             f"🌟💎 CAPTURE LÉGENDAIRE ! 💎🌟\n"
@@ -204,7 +112,7 @@ async def archipasmoi(ctx, nom: str):
             f"🔁 Repop estimé entre {start.strftime('%Hh%M')} et {end.strftime('%Hh%M')}\n\n"
             f"💎 Une énergie colossale se condense dans la pierre d’âme…\n"
             f"⚡️ Le Monde des Douze tremble sous votre puissance !\n"
-            f"🔥 Les étoiles s’inclinent devant ce triomphe ! 💥\n"
+            f"🔥 Les étoiles s’inclinent devant votre triomphe ! 💥\n"
             f"⚠️ Aucun point ne sera attribué avec cette commande"
         )
     elif nom in RARES:
@@ -220,15 +128,81 @@ async def archipasmoi(ctx, nom: str):
         msg = f"✅ **{nom}** (timer affiché pour info) | Repop estimé {start.strftime('%Hh%M')} - {end.strftime('%Hh%M')}\n⚠️ Aucun point ne sera attribué"
     
     await ctx.send(msg)
-# ================= CLASSEMENT =================
+
+# ---- !archilist ----
+@bot.command()
+async def archilist(ctx):
+    t = now()
+    sorted_archis = sorted(data["archis"].items(), key=lambda x: x[1]["capture"])
+    msgs = []
+    temp_msg = ""
+    for nom, info in sorted_archis:
+        cap = datetime.fromisoformat(info["capture"]).astimezone(TIMEZONE)
+        start, end = repop_window(cap)
+        timer = f"{start.strftime('%Hh%M')} - {end.strftime('%Hh%M')}" if t <= end else "Expiré"
+        line = f"{nom} → {timer}\n"
+        if len(temp_msg) + len(line) > 1900:
+            msgs.append(temp_msg)
+            temp_msg = ""
+        temp_msg += line
+    if temp_msg:
+        msgs.append(temp_msg)
+    for m in msgs:
+        await ctx.send(m)
+
+# ---- !archilistme ----
+@bot.command()
+async def archilistme(ctx):
+    t = now()
+    uid = str(ctx.author.id)
+    if uid not in data["weekly"]:
+        await ctx.send("Tu n’as encore capturé aucun archimonstre aujourd’hui.")
+        return
+    sorted_archis = sorted(data["weekly"][uid]["archis"])
+    msgs = []
+    temp_msg = ""
+    for nom in sorted_archis:
+        if nom not in data["archis"]:
+            timer = "Expiré"
+        else:
+            cap = datetime.fromisoformat(data["archis"][nom]["capture"]).astimezone(TIMEZONE)
+            start, end = repop_window(cap)
+            timer = f"{start.strftime('%Hh%M')} - {end.strftime('%Hh%M')}" if t <= end else "Expiré"
+        line = f"{nom} → {timer}\n"
+        if len(temp_msg) + len(line) > 1900:
+            msgs.append(temp_msg)
+            temp_msg = ""
+        temp_msg += line
+    if temp_msg:
+        msgs.append(temp_msg)
+    for m in msgs:
+        await ctx.send(m)
+
+# ---- !timer ----
+@bot.command()
+async def timer(ctx, nom: str):
+    nom = nom.lower()
+    t = now()
+    if nom not in data["archis"]:
+        await ctx.send(f"❌ **{nom}** n’a pas été capturé aujourd’hui.")
+        return
+    info = data["archis"][nom]
+    cap = datetime.fromisoformat(info["capture"]).astimezone(TIMEZONE)
+    start, end = repop_window(cap)
+    if t < start:
+        status = "⏳ Pas encore repop"
+    elif start <= t <= end:
+        status = "🟢 En repop"
+    else:
+        status = "🔴 Expiré"
+    msg = f"{status} **{nom}**\n🕒 Capturé à {cap.strftime('%Hh%M')}\n🔁 Repop estimé entre {start.strftime('%Hh%M')} et {end.strftime('%Hh%M')}"
+    await ctx.send(msg)
+
+# ---- !classement ----
 @bot.command()
 async def classement(ctx):
-    classement_sorted = sorted(
-        data["weekly"].items(),
-        key=lambda x: x[1]["points"],
-        reverse=True
-    )
-    msg = "🏆 **Classement hebdomadaire** 🏆\n\n"
+    classement_sorted = sorted(data["weekly"].items(), key=lambda x: x[1]["points"], reverse=True)
+    msg = "🏆 Classement 🏆\n\n"
     for uid, info in classement_sorted:
         member = ctx.guild.get_member(int(uid))
         if not member:
@@ -236,60 +210,86 @@ async def classement(ctx):
         archis = set(info["archis"])
         rares = sum(1 for a in archis if a in RARES)
         leg = sum(1 for a in archis if a in LEGENDAIRES)
-        msg += f"{member.display_name} - {info['points']} points ({len(archis)} archis, {rares} rares, {leg} légendaires)\n"
+        msg += f"{member.display_name} - {info['points']} points ({len(archis)} archis différents, {rares} rares, {leg} légendaires)\n"
     await ctx.send(msg)
 
-# ================= RESETWEEKLY =================
-@bot.command()
-@commands.has_permissions(administrator=True)
-async def resetweekly(ctx):
-    data["weekly"] = {}
-    for uid in data["stats"]:
-        data["stats"][uid]["weekly_points"] = 0
-    save_data()
-    await ctx.send("♻️ Classement hebdomadaire réinitialisé !")
-
-# ================= MVP =================
-@bot.command()
-@commands.has_permissions(administrator=True)
-async def mvp(ctx, pseudo: str):
-    await ctx.send(f"🏅 **Champion d’Otomail : {pseudo} !** 🏅")
-
-# ================= MYSTATS =================
+# ---- !mystats ----
 @bot.command()
 async def mystats(ctx):
     uid = str(ctx.author.id)
-    s = data["stats"].get(uid)
-    if not s:
-        await ctx.send("❌ Aucune stat disponible.")
+    if uid not in data["weekly"]:
+        await ctx.send("Aucune stat disponible.")
         return
+    info = data["weekly"][uid]
+    archis = set(info["archis"])
+    rares = sum(1 for a in archis if a in RARES)
+    leg = sum(1 for a in archis if a in LEGENDAIRES)
     msg = (
-        f"📊 **Tes stats, {ctx.author.display_name}** 📊\n"
-        f"Points totaux : {s['total_points']}\n"
-        f"Archis uniques : {len(s['archis_uniques'])}\n"
-        f"Légendaires : {s['legendaires']}, Rares : {s['rares']}\n"
-        f"Captures totales : {s['total_captures']}\n"
-        f"Points cette semaine : {s['weekly_points']}\n"
-        f"Points aujourd'hui : {s['daily_points']}"
+        f"📊 Stats de {ctx.author.display_name} 📊\n"
+        f"Points : {info['points']}\n"
+        f"Archis différents : {len(archis)}\n"
+        f"Rares : {rares}\n"
+        f"Légendaires : {leg}"
     )
     await ctx.send(msg)
 
-# ================= LOOP REPOP =================
-@tasks.loop(minutes=1)
-async def repop_loop():
+# ================= COMMANDES ADMIN =================
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def resetweekly(ctx):
+    for uid in data["weekly"]:
+        data["weekly"][uid]["points"] = 0
+        data["weekly"][uid]["archis"] = []
+    save_data()
+    await ctx.send("✅ Classement hebdomadaire réinitialisé.")
+
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def mvp(ctx, pseudo: str):
+    await ctx.send(f"🏆 Champion d’Otomail : {pseudo} 🏆")
+
+# ---- !deletetimer (supprime timer + points) ----
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def deletetimer(ctx, nom: str):
+    nom = nom.lower()
+    if nom not in data["archis"]:
+        await ctx.send(f"❌ **{nom}** n’est pas dans la liste des timers.")
+        return
+    uid = data["archis"][nom]["by"]
+    points = 1
+    if nom in RARES:
+        points = 5
+    if nom in LEGENDAIRES:
+        points = 10
+    if uid in data["weekly"]:
+        data["weekly"][uid]["points"] -= points
+        if nom in data["weekly"][uid]["archis"]:
+            data["weekly"][uid]["archis"].remove(nom)
+    del data["archis"][nom]
+    save_data()
+    await ctx.send(f"🗑️ **{nom}** supprimé du suivi et {points} points retirés du joueur.")
+
+# ================= REPOP =================
+@tasks.loop(minutes=60)
+async def hourly_repop():
     t = now()
     for nom, info in list(data["archis"].items()):
         cap = datetime.fromisoformat(info["capture"]).astimezone(TIMEZONE)
         start, end = repop_window(cap)
+        if start <= t <= start + timedelta(minutes=1):
+            for guild in bot.guilds:
+                channel = discord.utils.get(guild.text_channels, name=ALERT_CHANNEL_NAME)
+                if channel:
+                    await channel.send(f"🔔 **{nom}** est en repop !")
         if t > end:
             del data["archis"][nom]
     save_data()
 
-# ================= READY =================
 @bot.event
 async def on_ready():
     print("Bot prêt")
-    print("Commandes disponibles :", [cmd.name for cmd in bot.commands])
-    repop_loop.start()
+    hourly_repop.start()
+    print("Commandes disponibles :", [c.name for c in bot.commands])
 
 bot.run(TOKEN)
