@@ -3,18 +3,19 @@ from discord.ext import commands
 import json
 import os
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo  # Pour gérer le fuseau horaire Paris
 
+# ---------- CONFIG ----------
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True  # Pour récupérer le pseudo serveur
-
 bot = commands.Bot(command_prefix="!", intents=intents, case_insensitive=True)
 
 TOKEN = os.environ["DISCORD_TOKEN"]
-
 DATA_FILE = "data.json"
+PARIS = ZoneInfo("Europe/Paris")  # Fuseau horaire Paris
 
-# ---------- RARES / LEGENDAIRES ----------
+# ---------- RAES / LEGENDAIRES ----------
 RARES = [
     "faufoll","fanburn","fansiss","fanlmyl","fanlabiz","fantoch",
     "bistou","bistoulerieur","bistoulequeteur",
@@ -48,10 +49,9 @@ async def on_ready():
     print("Commandes disponibles :", [cmd.name for cmd in bot.commands])
 
 # ---------- UTILS ----------
-def get_repop():
-    """Repop calculé par rapport à l'heure de capture"""
-    now = datetime.now()
-    return now + timedelta(hours=10), now + timedelta(hours=14)
+def get_repop(capture_time):
+    """Renvoie repop_min et repop_max exacts par rapport à l'heure de capture"""
+    return capture_time + timedelta(hours=10), capture_time + timedelta(hours=14)
 
 # ---------- ARCHI ----------
 @bot.command()
@@ -59,10 +59,11 @@ async def archi(ctx, *, nom):
     nom = nom.lower()
     user = str(ctx.author)
 
-    repop_min, repop_max = get_repop()
-    capture_time = datetime.now().strftime("%Hh%M")
+    capture_time = datetime.now(PARIS)
+    repop_min, repop_max = get_repop(capture_time)
+    capture_time_str = capture_time.strftime("%Hh%M")
 
-    # Attribution des points
+    # Points selon rareté
     if nom in LEGENDAIRES:
         points = 10
     elif nom in RARES:
@@ -72,7 +73,7 @@ async def archi(ctx, *, nom):
 
     data["archis"][nom] = {
         "user": user,
-        "capture_time": datetime.now().isoformat(),
+        "capture_time": capture_time.isoformat(),
         "repop_min": repop_min.isoformat(),
         "repop_max": repop_max.isoformat(),
         "points": points
@@ -80,14 +81,13 @@ async def archi(ctx, *, nom):
 
     data["stats"].setdefault(user, {"points": 0})
     data["stats"][user]["points"] += points
-
     save_data(data)
 
     if nom in LEGENDAIRES:
         msg = (
             f"🌟💎 CAPTURE LÉGENDAIRE ! 💎🌟\n"
             f"✅ {nom} enregistré par {user}\n"
-            f"🕒 Capturé à {capture_time}\n"
+            f"🕒 Capturé à {capture_time_str}\n"
             f"🔁 Repop entre {repop_min.strftime('%Hh%M')} et {repop_max.strftime('%Hh%M')}\n\n"
             f"💎 Une énergie colossale se condense dans votre pierre d’âme…\n"
             f"⚡️ Le Monde des Douze tremble sous votre puissance !\n"
@@ -97,7 +97,7 @@ async def archi(ctx, *, nom):
         msg = (
             f"⭐ ARCHIMONSTRE RARE CAPTURÉ ! ⭐\n"
             f"✅ {nom} enregistré par {user}\n"
-            f"🕒 Capturé à {capture_time}\n"
+            f"🕒 Capturé à {capture_time_str}\n"
             f"🔁 Repop entre {repop_min.strftime('%Hh%M')} et {repop_max.strftime('%Hh%M')}\n\n"
             f"Une aura inhabituelle émane de cette créature…\n"
             f"Les chasseurs expérimentés savent que ces spécimens sont particulièrement recherchés."
@@ -106,7 +106,7 @@ async def archi(ctx, *, nom):
         msg = (
             f"✨ ARCHIMONSTRE CAPTURÉ\n"
             f"✅ {nom} enregistré par {user}\n"
-            f"🕒 Capturé à {capture_time}\n"
+            f"🕒 Capturé à {capture_time_str}\n"
             f"🔁 Repop entre {repop_min.strftime('%Hh%M')} et {repop_max.strftime('%Hh%M')}"
         )
 
@@ -116,11 +116,12 @@ async def archi(ctx, *, nom):
 @bot.command()
 async def archipasmoi(ctx, *, nom):
     nom = nom.lower()
-    repop_min, repop_max = get_repop()
+    capture_time = datetime.now(PARIS)
+    repop_min, repop_max = get_repop(capture_time)
 
     data["archis"][nom] = {
         "user": "autre",
-        "capture_time": datetime.now().isoformat(),
+        "capture_time": capture_time.isoformat(),
         "repop_min": repop_min.isoformat(),
         "repop_max": repop_max.isoformat(),
         "points": 0
@@ -202,7 +203,7 @@ async def archilistme(ctx):
 # ---------- REPOP ----------
 @bot.command()
 async def repop(ctx):
-    now = datetime.now()
+    now = datetime.now(PARIS)
     en_cours = []
     bientot = []
     for nom, info in data["archis"].items():
@@ -224,7 +225,7 @@ async def repop(ctx):
 # ---------- PROCHAIN REPOP ----------
 @bot.command()
 async def prochainrepop(ctx):
-    now = datetime.now()
+    now = datetime.now(PARIS)
     bientot = []
     for nom, info in data["archis"].items():
         repop_min = datetime.fromisoformat(info["repop_min"])
@@ -247,14 +248,6 @@ async def resettimer(ctx):
     save_data(data)
     await ctx.send("♻️ Tous les timers ont été réinitialisés (points retirés si nécessaire)")
 
-# ---------- RESET WEEKLY ----------
-@bot.command()
-@commands.has_permissions(administrator=True)
-async def resetweekly(ctx):
-    data["stats"] = {}
-    save_data(data)
-    await ctx.send("♻️ Reset effectué")
-
 # ---------- CLASSEMENT ----------
 @bot.command()
 async def classement(ctx):
@@ -264,12 +257,12 @@ async def classement(ctx):
 
     guild = ctx.guild
     msg = "🏆 **CLASSEMENT DES CHASSEURS** 🏆\n\n"
-
     ranking = sorted(data["stats"].items(), key=lambda x: x[1]["points"], reverse=True)
     for user_id_str, stats in ranking:
-        member = discord.utils.get(guild.members, name=user_id_str)  # pseudo serveur
+        member = discord.utils.get(guild.members, name=user_id_str)
         display_name = member.display_name if member else user_id_str
 
+        # Calcul des archis, rares et légendaires
         archis_captures = [n for n, info in data["archis"].items() if info["user"] == user_id_str]
         total_archis = len(archis_captures)
         rares_count = sum(1 for n in archis_captures if n in RARES)
@@ -286,20 +279,25 @@ async def mystats(ctx):
     if user not in data["stats"]:
         await ctx.send("❌ Aucune stat")
         return
-
     pts = data["stats"][user]["points"]
     archis_captures = [n for n, info in data["archis"].items() if info["user"] == user]
     total_archis = len(archis_captures)
     rares_count = sum(1 for n in archis_captures if n in RARES)
     legends_count = sum(1 for n in archis_captures if n in LEGENDAIRES)
-
     await ctx.send(
-        f"📊 **TES STATS** 📊\n\n👤 {user}\n"
+        f"📊 **TES STATS** 📊\n\n"
+        f"👤 {user}\n"
         f"🏆 Points : {pts}\n"
-        f"✨ Archis capturés : {total_archis}\n"
-        f"⭐ Rares : {rares_count}\n"
-        f"💎 Légendaires : {legends_count}"
+        f"✨ Archis capturés : {total_archis} ({rares_count} Rares, {legends_count} Légendaires)"
     )
+
+# ---------- RESET WEEKLY ----------
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def resetweekly(ctx):
+    data["stats"] = {}
+    save_data(data)
+    await ctx.send("♻️ Reset effectué")
 
 # ---------- MVP ----------
 @bot.command()
