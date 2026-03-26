@@ -6,9 +6,12 @@ from datetime import datetime, timedelta
 
 intents = discord.Intents.default()
 intents.message_content = True
+intents.members = True  # Pour récupérer le pseudo serveur
+
 bot = commands.Bot(command_prefix="!", intents=intents, case_insensitive=True)
 
 TOKEN = os.environ["DISCORD_TOKEN"]
+
 DATA_FILE = "data.json"
 
 # ---------- RAES / LEGENDAIRES ----------
@@ -53,14 +56,12 @@ def get_repop():
 @bot.command()
 async def archi(ctx, *, nom):
     nom = nom.lower()
-    user = ctx.author.display_name  # pseudo propre à la guilde
+    user = str(ctx.author)
 
     repop_min, repop_max = get_repop()
     capture_time = datetime.now().strftime("%Hh%M")
 
     points = 1
-    if nom in LEGENDAIRES or nom in RARES:
-        points = 1
     data["archis"][nom] = {
         "user": user,
         "capture_time": datetime.now().isoformat(),
@@ -71,6 +72,7 @@ async def archi(ctx, *, nom):
 
     data["stats"].setdefault(user, {"points": 0})
     data["stats"][user]["points"] += points
+
     save_data(data)
 
     if nom in LEGENDAIRES:
@@ -115,6 +117,7 @@ async def archipasmoi(ctx, *, nom):
         "repop_max": repop_max.isoformat(),
         "points": 0
     }
+
     save_data(data)
 
     await ctx.send(
@@ -171,7 +174,7 @@ async def archilist(ctx):
 # ---------- ARCHILISTME ----------
 @bot.command()
 async def archilistme(ctx):
-    user = ctx.author.display_name
+    user = str(ctx.author)
     result = []
     for nom, info in data["archis"].items():
         if info["user"] == user:
@@ -242,21 +245,29 @@ async def classement(ctx):
     if not data["stats"]:
         await ctx.send("❌ Aucun classement")
         return
-    # classement par pseudo serveur
-    ranking = sorted(data["stats"].items(), key=lambda x: x[1]["points"], reverse=True)
+
+    guild = ctx.guild
     msg = "🏆 **CLASSEMENT DES CHASSEURS** 🏆\n\n"
-    total_archis = len(data["archis"])
-    total_rares = sum(1 for nom in data["archis"] if nom in RARES)
-    total_legend = sum(1 for nom in data["archis"] if nom in LEGENDAIRES)
-    msg += f"📊 Total Archis capturés : {total_archis} (Rares : {total_rares}, Légendaires : {total_legend})\n\n"
-    for i, (user, stats) in enumerate(ranking, 1):
-        msg += f"**{i}. {user}** → {stats['points']} pts\n"
+
+    ranking = sorted(data["stats"].items(), key=lambda x: x[1]["points"], reverse=True)
+    for user_id_str, stats in ranking:
+        member = discord.utils.get(guild.members, name=user_id_str)  # récupérer le pseudo serveur
+        display_name = member.display_name if member else user_id_str
+
+        # Calcul des archis, rares et légendaires
+        archis_captures = [n for n, info in data["archis"].items() if info["user"] == user_id_str]
+        total_archis = len(archis_captures)
+        rares_count = sum(1 for n in archis_captures if n in RARES)
+        legends_count = sum(1 for n in archis_captures if n in LEGENDAIRES)
+
+        msg += f"**{display_name}** → {stats['points']} pts : {total_archis} archis différents ({rares_count} Rares, {legends_count} Légendaires)\n"
+
     await ctx.send(msg)
 
 # ---------- MYSTATS ----------
 @bot.command()
 async def mystats(ctx):
-    user = ctx.author.display_name
+    user = str(ctx.author)
     if user not in data["stats"]:
         await ctx.send("❌ Aucune stat")
         return
