@@ -14,7 +14,7 @@ TOKEN = os.environ["DISCORD_TOKEN"]
 
 DATA_FILE = "data.json"
 
-# ---------- RAES / LEGENDAIRES ----------
+# ---------- RARES / LEGENDAIRES ----------
 RARES = [
     "faufoll","fanburn","fansiss","fanlmyl","fanlabiz","fantoch",
     "bistou","bistoulerieur","bistoulequeteur",
@@ -49,11 +49,9 @@ async def on_ready():
 
 # ---------- UTILS ----------
 def get_repop():
+    """Repop calculé par rapport à l'heure de capture"""
     now = datetime.now()
-    tomorrow = now + timedelta(days=1)
-    repop_min = tomorrow.replace(hour=0, minute=15, second=0, microsecond=0)
-    repop_max = tomorrow.replace(hour=4, minute=15, second=0, microsecond=0)
-    return repop_min, repop_max
+    return now + timedelta(hours=10), now + timedelta(hours=14)
 
 # ---------- ARCHI ----------
 @bot.command()
@@ -160,8 +158,8 @@ async def deletetimer(ctx, *, nom):
         return
     info = data["archis"][nom]
     user = info["user"]
-    data["stats"].setdefault(user, {"points":0})
-    data["stats"][user]["points"] -= info["points"]
+    if info["points"] > 0 and user in data["stats"]:
+        data["stats"][user]["points"] -= info["points"]
     del data["archis"][nom]
     save_data(data)
     await ctx.send(f"🗑️ **{nom} supprimé** (points retirés si nécessaire)")
@@ -243,8 +241,8 @@ async def prochainrepop(ctx):
 async def resettimer(ctx):
     for nom, info in list(data["archis"].items()):
         user = info["user"]
-        data["stats"].setdefault(user, {"points":0})
-        data["stats"][user]["points"] -= info["points"]
+        if info["points"] > 0 and user in data["stats"]:
+            data["stats"][user]["points"] -= info["points"]
         del data["archis"][nom]
     save_data(data)
     await ctx.send("♻️ Tous les timers ont été réinitialisés (points retirés si nécessaire)")
@@ -269,10 +267,9 @@ async def classement(ctx):
 
     ranking = sorted(data["stats"].items(), key=lambda x: x[1]["points"], reverse=True)
     for user_id_str, stats in ranking:
-        member = discord.utils.get(guild.members, name=user_id_str)
+        member = discord.utils.get(guild.members, name=user_id_str)  # pseudo serveur
         display_name = member.display_name if member else user_id_str
 
-        # Calcul des archis, rares et légendaires
         archis_captures = [n for n, info in data["archis"].items() if info["user"] == user_id_str]
         total_archis = len(archis_captures)
         rares_count = sum(1 for n in archis_captures if n in RARES)
@@ -290,17 +287,18 @@ async def mystats(ctx):
         await ctx.send("❌ Aucune stat")
         return
 
+    pts = data["stats"][user]["points"]
     archis_captures = [n for n, info in data["archis"].items() if info["user"] == user]
     total_archis = len(archis_captures)
     rares_count = sum(1 for n in archis_captures if n in RARES)
     legends_count = sum(1 for n in archis_captures if n in LEGENDAIRES)
-    pts = data["stats"][user]["points"]
 
     await ctx.send(
-        f"📊 **TES STATS** 📊\n\n"
-        f"👤 {user}\n"
+        f"📊 **TES STATS** 📊\n\n👤 {user}\n"
         f"🏆 Points : {pts}\n"
-        f"✨ Archis : {total_archis} (⭐ Rares : {rares_count}, 💎 Légendaires : {legends_count})"
+        f"✨ Archis capturés : {total_archis}\n"
+        f"⭐ Rares : {rares_count}\n"
+        f"💎 Légendaires : {legends_count}"
     )
 
 # ---------- MVP ----------
