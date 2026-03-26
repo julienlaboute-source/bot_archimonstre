@@ -274,20 +274,31 @@ async def classement(ctx):
 @bot.command()
 async def mystats(ctx):
     user = str(ctx.author)
+
     if user not in data["stats"]:
         await ctx.send("❌ Aucune stat")
         return
+
     pts = data["stats"][user]["points"]
-    await ctx.send(f"📊 **TES STATS** 📊\n\n👤 {user}\n🏆 Points : {pts}")
 
-# ---------- RESET WEEKLY ----------
-@bot.command()
-@commands.has_permissions(administrator=True)
-async def resetweekly(ctx):
-    data["stats"] = {}
-    save_data(data)
-    await ctx.send("♻️ Reset effectué")
+    # 🔎 récupération des archis du joueur
+    archis_captures = [
+        n for n, info in data["archis"].items()
+        if info["user"] == user
+    ]
 
+    total_archis = len(archis_captures)
+    rares_count = sum(1 for n in archis_captures if n in RARES)
+    legends_count = sum(1 for n in archis_captures if n in LEGENDAIRES)
+
+    await ctx.send(
+        f"📊 **TES STATS** 📊\n\n"
+        f"👤 {user}\n"
+        f"🏆 Points : {pts}\n"
+        f"👹 Archis différents : {total_archis}\n"
+        f"⭐ Rares : {rares_count}\n"
+        f"💎 Légendaires : {legends_count}"
+    )
 # ---------- MVP ----------
 @bot.command()
 @commands.has_permissions(administrator=True)
