@@ -61,7 +61,14 @@ async def archi(ctx, *, nom):
     repop_min, repop_max = get_repop()
     capture_time = datetime.now().strftime("%Hh%M")
 
-    points = 1
+    # ✅ MODIF POINTS
+    if nom in LEGENDAIRES:
+        points = 10
+    elif nom in RARES:
+        points = 5
+    else:
+        points = 1
+
     data["archis"][nom] = {
         "user": user,
         "capture_time": datetime.now().isoformat(),
@@ -150,8 +157,8 @@ async def deletetimer(ctx, *, nom):
         return
     info = data["archis"][nom]
     user = info["user"]
-    if info["points"] == 1 and user in data["stats"]:
-        data["stats"][user]["points"] -= 1
+    if info["points"] > 0 and user in data["stats"]:
+        data["stats"][user]["points"] -= info["points"]
     del data["archis"][nom]
     save_data(data)
     await ctx.send(f"🗑️ **{nom} supprimé** (points retirés si nécessaire)")
@@ -233,8 +240,8 @@ async def prochainrepop(ctx):
 async def resettimer(ctx):
     for nom, info in list(data["archis"].items()):
         user = info["user"]
-        if info["points"] == 1 and user in data["stats"]:
-            data["stats"][user]["points"] -= 1
+        if info["points"] > 0 and user in data["stats"]:
+            data["stats"][user]["points"] -= info["points"]
         del data["archis"][nom]
     save_data(data)
     await ctx.send("♻️ Tous les timers ont été réinitialisés (points retirés si nécessaire)")
@@ -251,10 +258,9 @@ async def classement(ctx):
 
     ranking = sorted(data["stats"].items(), key=lambda x: x[1]["points"], reverse=True)
     for user_id_str, stats in ranking:
-        member = discord.utils.get(guild.members, name=user_id_str)  # récupérer le pseudo serveur
+        member = discord.utils.get(guild.members, name=user_id_str)
         display_name = member.display_name if member else user_id_str
 
-        # Calcul des archis, rares et légendaires
         archis_captures = [n for n, info in data["archis"].items() if info["user"] == user_id_str]
         total_archis = len(archis_captures)
         rares_count = sum(1 for n in archis_captures if n in RARES)
