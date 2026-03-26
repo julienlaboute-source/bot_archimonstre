@@ -305,4 +305,12 @@ async def mystats(ctx):
 async def mvp(ctx, pseudo):
     await ctx.send(f"🏆 MVP : {pseudo}")
 
+# ---------- RESET WEEKLY ----------
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def resetweekly(ctx):
+    data["stats"] = {}
+    save_data(data)
+    await ctx.send("♻️ Reset effectué")
+
 bot.run(TOKEN)
