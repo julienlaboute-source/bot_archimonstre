@@ -244,7 +244,7 @@ async def classement(ctx):
     if not data["stats"]:
         await ctx.send("❌ Aucun classement")
         return
-    ranking = sorted(data["stats"].items(), key=lambda x: x[1]["points'], reverse=True)
+    ranking = sorted(data["stats"].items(), key=lambda x: x[1]["points"], reverse=True)
     msg = "🏆 **CLASSEMENT DES CHASSEURS** 🏆\n\n"
     for i, (user, stats) in enumerate(ranking, 1):
         msg += f"**{i}. {user}** → {stats['points']} pts\n"
