@@ -140,6 +140,21 @@ async def timer(ctx, *, nom):
         f"🔁 {repop_min.strftime('%Hh%M')} - {repop_max.strftime('%Hh%M')}"
     )
 
+# ---------- DELETE TIMER ----------
+@bot.command()
+async def deletetimer(ctx, *, nom):
+    nom = nom.lower()
+    if nom not in data["archis"]:
+        await ctx.send("❌ Archi non trouvé")
+        return
+    info = data["archis"][nom]
+    user = info["user"]
+    if info["points"] == 1 and user in data["stats"]:
+        data["stats"][user]["points"] -= 1
+    del data["archis"][nom]
+    save_data(data)
+    await ctx.send(f"🗑️ **{nom} supprimé** (points retirés si nécessaire)")
+
 # ---------- ARCHILIST ----------
 @bot.command()
 async def archilist(ctx):
@@ -175,21 +190,6 @@ async def archilistme(ctx):
         msg += f"{emoji} **{nom}** → {rmin.strftime('%Hh%M')} - {rmax.strftime('%Hh%M')}\n"
     await ctx.send(msg)
 
-# ---------- DELETE TIMER ----------
-@bot.command()
-async def deletetimer(ctx, *, nom):
-    nom = nom.lower()
-    if nom not in data["archis"]:
-        await ctx.send("❌ Archi non trouvé")
-        return
-    info = data["archis"][nom]
-    user = info["user"]
-    if info["points"] == 1 and user in data["stats"]:
-        data["stats"][user]["points"] -= 1
-    del data["archis"][nom]
-    save_data(data)
-    await ctx.send(f"🗑️ **{nom} supprimé** (points retirés si nécessaire)")
-
 # ---------- REPOP ----------
 @bot.command()
 async def repop(ctx):
@@ -212,13 +212,39 @@ async def repop(ctx):
         message = "❌ Aucun repop en cours ou prévu."
     await ctx.send(message)
 
+# ---------- PROCHAIN REPOP ----------
+@bot.command()
+async def prochainrepop(ctx):
+    now = datetime.now()
+    bientot = []
+    for nom, info in data["archis"].items():
+        repop_min = datetime.fromisoformat(info["repop_min"])
+        if now < repop_min and (repop_min - now).total_seconds() <= 7200:
+            bientot.append(f"🟡 **{nom}** → {repop_min.strftime('%Hh%M')}")
+    if not bientot:
+        await ctx.send("❌ Aucun prochain repop dans les 2h")
+    else:
+        await ctx.send("**🟡 PROCHAINS REPOP (<2h) :**\n" + "\n".join(bientot))
+
+# ---------- RESET TIMER ----------
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def resettimer(ctx):
+    for nom, info in list(data["archis"].items()):
+        user = info["user"]
+        if info["points"] == 1 and user in data["stats"]:
+            data["stats"][user]["points"] -= 1
+        del data["archis"][nom]
+    save_data(data)
+    await ctx.send("♻️ Tous les timers ont été réinitialisés (points retirés si nécessaire)")
+
 # ---------- CLASSEMENT ----------
 @bot.command()
 async def classement(ctx):
     if not data["stats"]:
         await ctx.send("❌ Aucun classement")
         return
-    ranking = sorted(data["stats"].items(), key=lambda x: x[1]["points"], reverse=True)
+    ranking = sorted(data["stats"].items(), key=lambda x: x[1]["points'], reverse=True)
     msg = "🏆 **CLASSEMENT DES CHASSEURS** 🏆\n\n"
     for i, (user, stats) in enumerate(ranking, 1):
         msg += f"**{i}. {user}** → {stats['points']} pts\n"
@@ -234,7 +260,7 @@ async def mystats(ctx):
     pts = data["stats"][user]["points"]
     await ctx.send(f"📊 **TES STATS** 📊\n\n👤 {user}\n🏆 Points : {pts}")
 
-# ---------- RESET ----------
+# ---------- RESET WEEKLY ----------
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def resetweekly(ctx):
