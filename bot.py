@@ -60,7 +60,7 @@ async def archi(ctx, *, nom):
     repop_min, repop_max = get_repop()
     capture_time = datetime.now().strftime("%Hh%M")
 
-    points = 1 if nom not in LEGENDAIRES else 1
+    points = 1
     data["archis"][nom] = {
         "user": user,
         "capture_time": datetime.now().isoformat(),
@@ -84,7 +84,7 @@ async def archi(ctx, *, nom):
             f"⚡️ Le Monde des Douze tremble sous votre puissance !\n"
             f"🔥 Les étoiles elles-mêmes s’inclinent devant votre triomphe ! 💥"
         )
-    elif nom in RAARES:
+    elif nom in RARES:
         msg = (
             f"⭐ ARCHIMONSTRE RARE CAPTURÉ ! ⭐\n"
             f"✅ {nom} enregistré par {user}\n"
@@ -166,7 +166,7 @@ async def archilist(ctx):
     for nom, info in sorted_archis:
         repop_min = datetime.fromisoformat(info["repop_min"])
         repop_max = datetime.fromisoformat(info["repop_max"])
-        emoji = "💎" if nom in LEGENDAIRES else "⭐" if nom in RAARES else "✨"
+        emoji = "💎" if nom in LEGENDAIRES else "⭐" if nom in RARES else "✨"
         msg += f"{emoji} **{nom}** → {repop_min.strftime('%Hh%M')} - {repop_max.strftime('%Hh%M')}\n"
     await ctx.send(msg)
 
@@ -186,7 +186,7 @@ async def archilistme(ctx):
     result.sort(key=lambda x: x[1])
     msg = "🧍 **TES ARCHIS** 🧍\n\n"
     for nom, rmin, rmax in result:
-        emoji = "💎" if nom in LEGENDAIRES else "⭐" if nom in RAARES else "✨"
+        emoji = "💎" if nom in LEGENDAIRES else "⭐" if nom in RARES else "✨"
         msg += f"{emoji} **{nom}** → {rmin.strftime('%Hh%M')} - {rmax.strftime('%Hh%M')}\n"
     await ctx.send(msg)
 
@@ -245,31 +245,20 @@ async def classement(ctx):
         await ctx.send("❌ Aucun classement")
         return
 
+    # Classement détaillé avec pseudo, nombre d’archis, rares et légendaires
     ranking = []
-    for user_str, stats in data["stats"].items():
-        member = None
-        try:
-            for m in ctx.guild.members:
-                if str(m) == user_str:
-                    member = m
-                    break
-        except Exception:
-            pass
-
-        archis_user = [nom for nom, a in data["archis"].items() if a["user"] == user_str]
-        nb_total = len(set(archis_user))
-        nb_rares = sum(1 for a in archis_user if a in RAARES)
-        nb_legend = sum(1 for a in archis_user if a in LEGENDAIRES)
-
-        ranking.append((member if member else user_str, stats["points"], nb_total, nb_rares, nb_legend))
+    for member_id, stats in data["stats"].items():
+        user_archis = [nom for nom, info in data["archis"].items() if info["user"] == member_id]
+        nb_archis = len(user_archis)
+        nb_rares = sum(1 for nom in user_archis if nom in RARES)
+        nb_legendaires = sum(1 for nom in user_archis if nom in LEGENDAIRES)
+        ranking.append((member_id, stats["points"], nb_archis, nb_rares, nb_legendaires))
 
     ranking.sort(key=lambda x: x[1], reverse=True)
-
     msg = "🏆 **CLASSEMENT DES CHASSEURS** 🏆\n\n"
-    for i, (member, pts, total, rares, legend) in enumerate(ranking, 1):
-        pseudo = member.display_name if isinstance(member, discord.Member) else member
-        msg += f"**{i}. {pseudo}** → {pts} pts | Archis : {total} | Rares : {rares} | Légendaires : {legend}\n"
-
+    for i, (user, points, nb_archis, nb_rares, nb_legendaires) in enumerate(ranking, 1):
+        msg += (f"**{i}. {user}** → {points} pts | Archis : {nb_archis} | "
+                f"Rares : {nb_rares} | Légendaires : {nb_legendaires}\n")
     await ctx.send(msg)
 
 # ---------- MYSTATS ----------
