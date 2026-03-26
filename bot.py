@@ -84,7 +84,7 @@ async def archi(ctx, *, nom):
             f"⚡️ Le Monde des Douze tremble sous votre puissance !\n"
             f"🔥 Les étoiles elles-mêmes s’inclinent devant votre triomphe ! 💥"
         )
-    elif nom in RAES:
+    elif nom in RARES:
         msg = (
             f"⭐ ARCHIMONSTRE RARE CAPTURÉ ! ⭐\n"
             f"✅ {nom} enregistré par {user}\n"
@@ -151,7 +151,7 @@ async def archilist(ctx):
     for nom, info in sorted_archis:
         repop_min = datetime.fromisoformat(info["repop_min"])
         repop_max = datetime.fromisoformat(info["repop_max"])
-        emoji = "💎" if nom in LEGENDAIRES else "⭐" if nom in RAES else "✨"
+        emoji = "💎" if nom in LEGENDAIRES else "⭐" if nom in RARES else "✨"
         msg += f"{emoji} **{nom}** → {repop_min.strftime('%Hh%M')} - {repop_max.strftime('%Hh%M')}\n"
     await ctx.send(msg)
 
@@ -171,7 +171,7 @@ async def archilistme(ctx):
     result.sort(key=lambda x: x[1])
     msg = "🧍 **TES ARCHIS** 🧍\n\n"
     for nom, rmin, rmax in result:
-        emoji = "💎" if nom in LEGENDAIRES else "⭐" if nom in RAES else "✨"
+        emoji = "💎" if nom in LEGENDAIRES else "⭐" if nom in RARES else "✨"
         msg += f"{emoji} **{nom}** → {rmin.strftime('%Hh%M')} - {rmax.strftime('%Hh%M')}\n"
     await ctx.send(msg)
 
