@@ -50,7 +50,10 @@ async def on_ready():
 # ---------- UTILS ----------
 def get_repop():
     now = datetime.now()
-    return now + timedelta(hours=10), now + timedelta(hours=14)
+    tomorrow = now + timedelta(days=1)
+    repop_min = tomorrow.replace(hour=0, minute=15, second=0, microsecond=0)
+    repop_max = tomorrow.replace(hour=4, minute=15, second=0, microsecond=0)
+    return repop_min, repop_max
 
 # ---------- ARCHI ----------
 @bot.command()
@@ -61,7 +64,7 @@ async def archi(ctx, *, nom):
     repop_min, repop_max = get_repop()
     capture_time = datetime.now().strftime("%Hh%M")
 
-    # ✅ MODIF POINTS
+    # Attribution des points
     if nom in LEGENDAIRES:
         points = 10
     elif nom in RARES:
@@ -157,8 +160,8 @@ async def deletetimer(ctx, *, nom):
         return
     info = data["archis"][nom]
     user = info["user"]
-    if info["points"] > 0 and user in data["stats"]:
-        data["stats"][user]["points"] -= info["points"]
+    data["stats"].setdefault(user, {"points":0})
+    data["stats"][user]["points"] -= info["points"]
     del data["archis"][nom]
     save_data(data)
     await ctx.send(f"🗑️ **{nom} supprimé** (points retirés si nécessaire)")
@@ -240,11 +243,19 @@ async def prochainrepop(ctx):
 async def resettimer(ctx):
     for nom, info in list(data["archis"].items()):
         user = info["user"]
-        if info["points"] > 0 and user in data["stats"]:
-            data["stats"][user]["points"] -= info["points"]
+        data["stats"].setdefault(user, {"points":0})
+        data["stats"][user]["points"] -= info["points"]
         del data["archis"][nom]
     save_data(data)
     await ctx.send("♻️ Tous les timers ont été réinitialisés (points retirés si nécessaire)")
+
+# ---------- RESET WEEKLY ----------
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def resetweekly(ctx):
+    data["stats"] = {}
+    save_data(data)
+    await ctx.send("♻️ Reset effectué")
 
 # ---------- CLASSEMENT ----------
 @bot.command()
@@ -261,6 +272,7 @@ async def classement(ctx):
         member = discord.utils.get(guild.members, name=user_id_str)
         display_name = member.display_name if member else user_id_str
 
+        # Calcul des archis, rares et légendaires
         archis_captures = [n for n, info in data["archis"].items() if info["user"] == user_id_str]
         total_archis = len(archis_captures)
         rares_count = sum(1 for n in archis_captures if n in RARES)
@@ -274,43 +286,27 @@ async def classement(ctx):
 @bot.command()
 async def mystats(ctx):
     user = str(ctx.author)
-
     if user not in data["stats"]:
         await ctx.send("❌ Aucune stat")
         return
 
-    pts = data["stats"][user]["points"]
-
-    # 🔎 récupération des archis du joueur
-    archis_captures = [
-        n for n, info in data["archis"].items()
-        if info["user"] == user
-    ]
-
+    archis_captures = [n for n, info in data["archis"].items() if info["user"] == user]
     total_archis = len(archis_captures)
     rares_count = sum(1 for n in archis_captures if n in RARES)
     legends_count = sum(1 for n in archis_captures if n in LEGENDAIRES)
+    pts = data["stats"][user]["points"]
 
     await ctx.send(
         f"📊 **TES STATS** 📊\n\n"
         f"👤 {user}\n"
         f"🏆 Points : {pts}\n"
-        f"👹 Archis différents : {total_archis}\n"
-        f"⭐ Rares : {rares_count}\n"
-        f"💎 Légendaires : {legends_count}"
+        f"✨ Archis : {total_archis} (⭐ Rares : {rares_count}, 💎 Légendaires : {legends_count})"
     )
+
 # ---------- MVP ----------
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def mvp(ctx, pseudo):
     await ctx.send(f"🏆 MVP : {pseudo}")
-
-# ---------- RESET WEEKLY ----------
-@bot.command()
-@commands.has_permissions(administrator=True)
-async def resetweekly(ctx):
-    data["stats"] = {}
-    save_data(data)
-    await ctx.send("♻️ Reset effectué")
 
 bot.run(TOKEN)
