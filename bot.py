@@ -51,13 +51,13 @@ async def on_ready():
 # ---------- UTILS ----------
 def get_repop(capture_time):
     """Renvoie repop_min et repop_max exacts par rapport à l'heure de capture"""
-    return capture_time + timedelta(hours=10), capture_time + timedelta(hours=14)
+    return capture_time + timedelta(hours=8), capture_time + timedelta(hours=16)
 
 # ---------- ARCHI ----------
 @bot.command()
 async def archi(ctx, *, nom):
     nom = nom.lower()
-    user = str(ctx.author)
+    user = str(ctx.author.display_name)
 
     capture_time = datetime.now(PARIS)
     repop_min, repop_max = get_repop(capture_time)
@@ -183,7 +183,7 @@ async def archilist(ctx):
 # ---------- ARCHILISTME ----------
 @bot.command()
 async def archilistme(ctx):
-    user = str(ctx.author)
+    user = str(ctx.author.display_name)
     result = []
     for nom, info in data["archis"].items():
         if info["user"] == user:
@@ -275,7 +275,7 @@ async def classement(ctx):
 # ---------- MYSTATS ----------
 @bot.command()
 async def mystats(ctx):
-    user = str(ctx.author)
+    user = str(ctx.author.display_name)
     if user not in data["stats"]:
         await ctx.send("❌ Aucune stat")
         return
