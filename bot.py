@@ -51,7 +51,7 @@ async def on_ready():
 # ---------- UTILS ----------
 def get_repop(capture_time):
     """Renvoie repop_min et repop_max exacts par rapport à l'heure de capture"""
-    return capture_time + timedelta(hours=8), capture_time + timedelta(hours=16)
+    return capture_time + timedelta(hours=6), capture_time + timedelta(hours=18)
 
 # ---------- ARCHI ----------
 @bot.command()
@@ -116,6 +116,7 @@ async def archi(ctx, *, nom):
 @bot.command()
 async def archipasmoi(ctx, *, nom):
     nom = nom.lower()
+
     capture_time = datetime.now(PARIS)
     repop_min, repop_max = get_repop(capture_time)
 
@@ -139,12 +140,15 @@ async def archipasmoi(ctx, *, nom):
 @bot.command()
 async def timer(ctx, *, nom):
     nom = nom.lower()
+
     if nom not in data["archis"]:
         await ctx.send("❌ Timer non connu")
         return
+
     info = data["archis"][nom]
     repop_min = datetime.fromisoformat(info["repop_min"])
     repop_max = datetime.fromisoformat(info["repop_max"])
+
     await ctx.send(
         f"⏱️ **{nom}**\n"
         f"🔁 {repop_min.strftime('%Hh%M')} - {repop_max.strftime('%Hh%M')}"
@@ -154,15 +158,20 @@ async def timer(ctx, *, nom):
 @bot.command()
 async def deletetimer(ctx, *, nom):
     nom = nom.lower()
+
     if nom not in data["archis"]:
         await ctx.send("❌ Archi non trouvé")
         return
+
     info = data["archis"][nom]
     user = info["user"]
+
     if info["points"] > 0 and user in data["stats"]:
         data["stats"][user]["points"] -= info["points"]
+
     del data["archis"][nom]
     save_data(data)
+
     await ctx.send(f"🗑️ **{nom} supprimé** (points retirés si nécessaire)")
 
 # ---------- ARCHILIST ----------
@@ -171,13 +180,18 @@ async def archilist(ctx):
     if not data["archis"]:
         await ctx.send("❌ Aucun archi aujourd’hui")
         return
+
     sorted_archis = sorted(data["archis"].items(), key=lambda x: x[1]["repop_min"])
+
     msg = "📜 **ARCHIMONSTRES DU JOUR** 📜\n\n"
+
     for nom, info in sorted_archis:
         repop_min = datetime.fromisoformat(info["repop_min"])
         repop_max = datetime.fromisoformat(info["repop_max"])
         emoji = "💎" if nom in LEGENDAIRES else "⭐" if nom in RARES else "✨"
+
         msg += f"{emoji} **{nom}** → {repop_min.strftime('%Hh%M')} - {repop_max.strftime('%Hh%M')}\n"
+
     await ctx.send(msg)
 
 # ---------- ARCHILISTME ----------
@@ -185,19 +199,25 @@ async def archilist(ctx):
 async def archilistme(ctx):
     user = str(ctx.author.display_name)
     result = []
+
     for nom, info in data["archis"].items():
         if info["user"] == user:
             repop_min = datetime.fromisoformat(info["repop_min"])
             repop_max = datetime.fromisoformat(info["repop_max"])
             result.append((nom, repop_min, repop_max))
+
     if not result:
         await ctx.send("❌ Aucun archi pour toi aujourd’hui")
         return
+
     result.sort(key=lambda x: x[1])
+
     msg = "🧍 **TES ARCHIS** 🧍\n\n"
+
     for nom, rmin, rmax in result:
         emoji = "💎" if nom in LEGENDAIRES else "⭐" if nom in RARES else "✨"
         msg += f"{emoji} **{nom}** → {rmin.strftime('%Hh%M')} - {rmax.strftime('%Hh%M')}\n"
+
     await ctx.send(msg)
 
 # ---------- REPOP ----------
@@ -206,20 +226,27 @@ async def repop(ctx):
     now = datetime.now(PARIS)
     en_cours = []
     bientot = []
+
     for nom, info in data["archis"].items():
         repop_min = datetime.fromisoformat(info["repop_min"])
         repop_max = datetime.fromisoformat(info["repop_max"])
+
         if repop_min <= now <= repop_max:
             en_cours.append(f"🟢 **{nom}** → {repop_min.strftime('%Hh%M')} - {repop_max.strftime('%Hh%M')}")
         elif now < repop_min and (repop_min - now).total_seconds() <= 7200:
             bientot.append(f"🟡 **{nom}** → {repop_min.strftime('%Hh%M')}")
+
     message = ""
+
     if en_cours:
         message += "**🟢 REPOP EN COURS :**\n" + "\n".join(en_cours) + "\n\n"
+
     if bientot:
         message += "**🟡 PROCHAINS REPOP (<2h) :**\n" + "\n".join(bientot)
+
     if not message:
         message = "❌ Aucun repop en cours ou prévu."
+
     await ctx.send(message)
 
 # ---------- PROCHAIN REPOP ----------
@@ -227,10 +254,13 @@ async def repop(ctx):
 async def prochainrepop(ctx):
     now = datetime.now(PARIS)
     bientot = []
+
     for nom, info in data["archis"].items():
         repop_min = datetime.fromisoformat(info["repop_min"])
+
         if now < repop_min and (repop_min - now).total_seconds() <= 7200:
             bientot.append(f"🟡 **{nom}** → {repop_min.strftime('%Hh%M')}")
+
     if not bientot:
         await ctx.send("❌ Aucun prochain repop dans les 2h")
     else:
@@ -242,9 +272,12 @@ async def prochainrepop(ctx):
 async def resettimer(ctx):
     for nom, info in list(data["archis"].items()):
         user = info["user"]
+
         if info["points"] > 0 and user in data["stats"]:
             data["stats"][user]["points"] -= info["points"]
+
         del data["archis"][nom]
+
     save_data(data)
     await ctx.send("♻️ Tous les timers ont été réinitialisés (points retirés si nécessaire)")
 
@@ -257,12 +290,13 @@ async def classement(ctx):
 
     guild = ctx.guild
     msg = "🏆 **CLASSEMENT DES CHASSEURS** 🏆\n\n"
+
     ranking = sorted(data["stats"].items(), key=lambda x: x[1]["points"], reverse=True)
+
     for user_id_str, stats in ranking:
         member = discord.utils.get(guild.members, name=user_id_str)
         display_name = member.display_name if member else user_id_str
 
-        # Calcul des archis, rares et légendaires
         archis_captures = [n for n, info in data["archis"].items() if info["user"] == user_id_str]
         total_archis = len(archis_captures)
         rares_count = sum(1 for n in archis_captures if n in RARES)
@@ -276,14 +310,17 @@ async def classement(ctx):
 @bot.command()
 async def mystats(ctx):
     user = str(ctx.author.display_name)
+
     if user not in data["stats"]:
         await ctx.send("❌ Aucune stat")
         return
+
     pts = data["stats"][user]["points"]
     archis_captures = [n for n, info in data["archis"].items() if info["user"] == user]
     total_archis = len(archis_captures)
     rares_count = sum(1 for n in archis_captures if n in RARES)
     legends_count = sum(1 for n in archis_captures if n in LEGENDAIRES)
+
     await ctx.send(
         f"📊 **TES STATS** 📊\n\n"
         f"👤 {user}\n"
